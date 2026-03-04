@@ -90,6 +90,8 @@ namespace JobSniper
             GridDashboard.Visibility = Visibility.Collapsed;
             GridTridicka.Visibility = Visibility.Collapsed;
             GridSettings.Visibility = Visibility.Collapsed;
+            GridCrm.Visibility = Visibility.Collapsed;
+
             visibleGrid.Visibility = Visibility.Visible;
 
             if (!string.IsNullOrEmpty(title)) TxtTridickaTitle.Text = title;
@@ -100,6 +102,7 @@ namespace JobSniper
             BtnKos.Background = Brushes.Transparent;
             BtnDuplicity.Background = Brushes.Transparent;
             BtnSettings.Background = Brushes.Transparent;
+            BtnCrmTab.Background = Brushes.Transparent;
 
             activeButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#34495E"));
 
