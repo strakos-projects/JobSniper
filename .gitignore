@@ -4,3 +4,9 @@
 *.user
 *.suo
 *.cache
+**/Local_*/
+**/Private/
+urls.json
+jobs.json
+blacklist.json
+crm_companies.json

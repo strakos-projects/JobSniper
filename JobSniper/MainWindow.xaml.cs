@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Reflection;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JobSniper
@@ -17,6 +18,10 @@ namespace JobSniper
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<JobOffer> SessionDuplicates { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<CompanyProfile> CrmProfiles { get; set; } = new ObservableCollection<CompanyProfile>();
+
+
+        private Dictionary<string, Type> _availableScrapers = new Dictionary<string, Type>();
+
         private readonly string urlsFilePath = "urls.json";
         private readonly string jobsFilePath = "jobs.json";
         private readonly string blacklistFilePath = "blacklist.json";
@@ -28,7 +33,18 @@ namespace JobSniper
         public MainWindow()
         {
             InitializeComponent();
-            CmbScrapers.ItemsSource = new List<string> { "ExampleScraper (Demo)" };
+            var scraperTypes = Assembly.GetExecutingAssembly().GetTypes()
+                .Where(t => typeof(IScraper).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+            foreach (var type in scraperTypes)
+            {
+                var instance = (IScraper)Activator.CreateInstance(type);
+                _availableScrapers[instance.Name] = type;
+            }
+
+            CmbScrapers.ItemsSource = _availableScrapers.Keys.ToList();
+            if (_availableScrapers.Count > 0) CmbScrapers.SelectedIndex = 0;
+
+            CmbScrapers.ItemsSource = new List<string> { "ExampleScraper (Demo)", "Jobs.cz (Ostrý)" };
             CmbScrapers.SelectedIndex = 0;
             DataGridJobs.ItemsSource = DatabaseOfJobs;
 
@@ -131,12 +147,23 @@ namespace JobSniper
             foreach (var url in savedUrls)
             {
                 if (!url.IsActive) continue;
-                IScraper scraper = url.PortalName switch
+                /*IScraper scraper = url.PortalName switch
                 {
                     "ExampleScraper (Demo)" => new ExampleScraper(),
-                    // Tady si v lokální větvi přidáš: "JobsCz" => new JobsCzScraper(),
+                    "Jobs.cz (Ostrý)" => new JobsCzScraper(),
                     _ => new ExampleScraper() // Výchozí pojistka pro staré adresy z předchozí verze
-                };
+                };*/
+                IScraper scraper;
+                if (_availableScrapers.ContainsKey(url.PortalName))
+                {
+                 
+                    scraper = (IScraper)Activator.CreateInstance(_availableScrapers[url.PortalName]);
+                }
+                else
+                {
+                    scraper = (IScraper)Activator.CreateInstance(_availableScrapers.Values.First());
+                    LogToConsole($"[Varování] Scraper '{url.PortalName}' nebyl nalezen. Používám záložní {scraper.Name}.");
+                }
 
                 LogToConsole($"[Engine] Using {scraper.Name} for {url.Url}");
                 List<JobOffer> newJobs = await scraper.ScrapeUrlAsync(url.Url, LogToConsole);
@@ -272,10 +299,38 @@ namespace JobSniper
         {
             if (sender is Button btn && btn.Tag is string url)
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = url, UseShellExecute = true });
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        MessageBox.Show("Tento inzerát neobsahuje žádný odkaz.", "Chybějící odkaz", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+                    {
+                        if (url.StartsWith("/"))
+                        {
+                            url = "https://example.com" + url;
+                        }
+                        else
+                        {
+                            url = "https://" + url;
+                        }
+                    }
+
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Odkaz se nepodařilo otevřít.\nURL: {url}\n\nChyba: {ex.Message}", "Chyba", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
         }
-
         private void BtnZajimave_Click(object sender, RoutedEventArgs e) => UpdateStatus(sender, 1);
         private void BtnSkryt_Click(object sender, RoutedEventArgs e) => UpdateStatus(sender, 2);
 
