@@ -15,6 +15,8 @@ namespace JobSniper
 {
     public partial class MainWindow : Window
     {
+        private int? _currentFilterStatus = null;
+        private bool _isShowingDuplicates = false;
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<JobOffer> SessionDuplicates { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<CompanyProfile> CrmProfiles { get; set; } = new ObservableCollection<CompanyProfile>();
@@ -82,13 +84,9 @@ namespace JobSniper
                 BtnArchiv.Content = string.Format(Properties.Resources.Menu_Archive_Format, archive);
         }
 
+   
         private void SetView(Grid visibleGrid, Button activeButton, string title = "", int? filterStatus = null, bool showDuplicates = false)
         {
-        
-            GridCrm.Visibility = Visibility.Collapsed;
-
-        
-            if (BtnCrmTab != null) BtnCrmTab.Background = Brushes.Transparent;
             GridDashboard.Visibility = Visibility.Collapsed;
             GridTridicka.Visibility = Visibility.Collapsed;
             GridSettings.Visibility = Visibility.Collapsed;
@@ -105,28 +103,57 @@ namespace JobSniper
 
             activeButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#34495E"));
 
-            if (showDuplicates)
-            {
-                DataGridJobs.ItemsSource = SessionDuplicates;
-                ICollectionView view = CollectionViewSource.GetDefaultView(SessionDuplicates);
-                view.Filter = null;
-                view.Refresh();
-            }
-            else
-            {
-                DataGridJobs.ItemsSource = DatabaseOfJobs;
-                ICollectionView view = CollectionViewSource.GetDefaultView(DatabaseOfJobs);
-                if (filterStatus.HasValue)
+
+            _currentFilterStatus = filterStatus;
+            _isShowingDuplicates = showDuplicates;
+
+            if (TxtSearch != null) TxtSearch.Text = "";
+
+            ApplyFilters();
+        }
+
+        
+        private void ApplyFilters()
+        {
+            var targetCollection = _isShowingDuplicates ? SessionDuplicates : DatabaseOfJobs;
+            DataGridJobs.ItemsSource = targetCollection;
+
+            ICollectionView view = CollectionViewSource.GetDefaultView(targetCollection);
+
+            view.Filter = (item) => {
+                var job = item as JobOffer;
+                if (job == null) return false;
+
+        
+                bool statusMatch = true;
+                if (!_isShowingDuplicates && _currentFilterStatus.HasValue)
                 {
-                    view.Filter = (item) =>
-                    {
-                        var job = item as JobOffer;
-                        if (filterStatus == 2) return job.Status == 2 || job.Status == 3;
-                        return job.Status == filterStatus;
-                    };
+                    if (_currentFilterStatus == 2) statusMatch = (job.Status == 2 || job.Status == 3);
+                    else statusMatch = (job.Status == _currentFilterStatus);
                 }
-                else view.Filter = null;
-                view.Refresh();
+                if (!statusMatch) return false;
+
+        
+                string query = TxtSearch.Text?.ToLower().Trim();
+                if (!string.IsNullOrEmpty(query))
+                {
+                    bool matchTitle = job.Title != null && job.Title.ToLower().Contains(query);
+                    bool matchCompany = job.Company != null && job.Company.ToLower().Contains(query);
+                    return matchTitle || matchCompany;
+                }
+
+                return true;
+            };
+
+            view.Refresh();
+        }
+
+        
+        private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (DataGridJobs?.ItemsSource != null)
+            {
+                CollectionViewSource.GetDefaultView(DataGridJobs.ItemsSource).Refresh();
             }
         }
 

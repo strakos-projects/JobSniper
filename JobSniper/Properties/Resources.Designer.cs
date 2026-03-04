@@ -439,6 +439,24 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný 🔍 Search:.
+        /// </summary>
+        public static string Search_Label {
+            get {
+                return ResourceManager.GetString("Search_Label", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Searches in job title and company name.
+        /// </summary>
+        public static string Search_Tooltip {
+            get {
+                return ResourceManager.GetString("Search_Tooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Add new URL to scrape:.
         /// </summary>
         public static string Settings_AddUrlLabel {

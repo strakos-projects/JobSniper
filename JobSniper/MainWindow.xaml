@@ -81,8 +81,19 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <TextBlock x:Name="TxtTridickaTitle" Grid.Row="0" Text="📥 Inbox" FontSize="32" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,20"/>
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
+                <TextBlock x:Name="TxtTridickaTitle" Grid.Column="0" Text="{x:Static p:Resources.Menu_Inbox_Format}" FontSize="32" FontWeight="SemiBold" Foreground="#333" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Static p:Resources.Search_Label}" VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="#7F8C8D" Margin="0,0,10,0"/>
+                    <TextBox x:Name="TxtSearch" Width="250" Padding="8" FontSize="14" TextChanged="TxtSearch_TextChanged" ToolTip="{x:Static p:Resources.Search_Tooltip}"/>
+                </StackPanel>
+            </Grid>
             <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="10">
                 <DataGrid Name="DataGridJobs" AutoGenerateColumns="False" IsReadOnly="True" Background="White" RowBackground="#F8F9FA" AlternatingRowBackground="White" BorderBrush="#EEE" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEE" VerticalContentAlignment="Center">
                     <DataGrid.Columns>

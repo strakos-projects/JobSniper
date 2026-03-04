@@ -64,6 +64,9 @@
   <data name="Grid_Salary" xml:space="preserve"><value>Salary</value></data>
   <data name="Grid_Actions" xml:space="preserve"><value>Actions</value></data>
   
+  <data name="Search_Label" xml:space="preserve"><value>🔍 Search:</value></data>
+  <data name="Search_Tooltip" xml:space="preserve"><value>Searches in job title and company name</value></data>
+  
   <data name="Btn_Web" xml:space="preserve"><value>🌐 Web</value></data>
   <data name="Btn_Unblock" xml:space="preserve"><value>♻️ Unblock</value></data>
   <data name="Btn_Edit" xml:space="preserve"><value>✏️ Edit</value></data>
