@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+	  <ApplicationIcon>sniper1.ico</ApplicationIcon>
+	  <Version>1.2.1</Version>
+	  <AssemblyVersion>1.2.1</AssemblyVersion>
+	  <FileVersion>1.2.1</FileVersion>
   </PropertyGroup>
 
 
