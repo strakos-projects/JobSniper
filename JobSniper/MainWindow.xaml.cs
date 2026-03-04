@@ -48,15 +48,20 @@ namespace JobSniper
             int opportunities = DatabaseOfJobs.Count(j => j.Status == 1);
             int trashedManual = DatabaseOfJobs.Count(j => j.Status == 2);
             int trashedAuto = DatabaseOfJobs.Count(j => j.Status == 3);
+            int archive = DatabaseOfJobs.Count(j => j.Status == 4);
 
             TxtCekaVTridicce.Text = inbox.ToString();
             TxtMojePrilezitosti.Text = opportunities.ToString();
             TxtZahozeno.Text = $"{trashedAuto} / {trashedManual}";
 
-            BtnTridicka.Content = $"📥 Inbox ({inbox})";
-            BtnPrilezitosti.Content = $"⭐ Opportunities ({opportunities})";
-            BtnKos.Content = $"🗑️ Trash ({trashedManual + trashedAuto})";
-            BtnDuplicity.Content = $"🔁 Session Duplicates ({SessionDuplicates.Count})";
+            // Zde používáme C# zdroje s funkcí string.Format pro doplnění čísel do závorek
+            BtnTridicka.Content = string.Format(Properties.Resources.Menu_Inbox_Format, inbox);
+            BtnPrilezitosti.Content = string.Format(Properties.Resources.Menu_Opportunities_Format, opportunities);
+            BtnKos.Content = string.Format(Properties.Resources.Menu_Trash_Format, trashedManual + trashedAuto);
+            BtnDuplicity.Content = string.Format(Properties.Resources.Menu_Duplicates_Format, SessionDuplicates.Count);
+
+            if (BtnArchiv != null)
+                BtnArchiv.Content = string.Format(Properties.Resources.Menu_Archive_Format, archive);
         }
 
         private void SetView(Grid visibleGrid, Button activeButton, string title = "", int? filterStatus = null, bool showDuplicates = false)

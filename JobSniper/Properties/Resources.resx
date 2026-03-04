@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="WindowTitle" xml:space="preserve"><value>JobSniper - My career zen</value></data>
+  <data name="AppTitle" xml:space="preserve"><value>🎯 JobSniper</value></data>
+  <data name="Menu_Dashboard" xml:space="preserve"><value>📊 Dashboard</value></data>
+  <data name="Menu_Inbox_Format" xml:space="preserve"><value>📥 Inbox ({0})</value></data>
+  <data name="Menu_Opportunities_Format" xml:space="preserve"><value>⭐ Opportunities ({0})</value></data>
+  <data name="Menu_Trash_Format" xml:space="preserve"><value>🗑️ Trash ({0})</value></data>
+  <data name="Menu_Archive_Format" xml:space="preserve"><value>🗄️ Archive ({0})</value></data>
+  <data name="Menu_Duplicates_Format" xml:space="preserve"><value>🔁 Session Duplicates ({0})</value></data>
+  <data name="Menu_Crm" xml:space="preserve"><value>🏢 CRM (Companies)</value></data>
+  <data name="Menu_Settings" xml:space="preserve"><value>⚙️ Settings &amp; Filters</value></data>
+
+  <data name="Dashboard_Title" xml:space="preserve"><value>Dashboard / Overview</value></data>
+  <data name="Dashboard_WaitingInbox" xml:space="preserve"><value>Waiting in Inbox</value></data>
+  <data name="Dashboard_MyOpportunities" xml:space="preserve"><value>My Opportunities</value></data>
+  <data name="Dashboard_Trashed" xml:space="preserve"><value>Trashed: Auto / Manual</value></data>
+  <data name="Dashboard_BackgroundProcesses" xml:space="preserve"><value>Background processes (Scraper)</value></data>
+
+  <data name="Grid_Position" xml:space="preserve"><value>Position</value></data>
+  <data name="Grid_Company" xml:space="preserve"><value>Company</value></data>
+  <data name="Grid_Location" xml:space="preserve"><value>Location</value></data>
+  <data name="Grid_Seen" xml:space="preserve"><value>Seen</value></data>
+  <data name="Grid_Salary" xml:space="preserve"><value>Salary</value></data>
+  <data name="Grid_Actions" xml:space="preserve"><value>Actions</value></data>
+  
+  <data name="Btn_Web" xml:space="preserve"><value>🌐 Web</value></data>
+  <data name="Btn_Unblock" xml:space="preserve"><value>♻️ Unblock</value></data>
+  <data name="Btn_Edit" xml:space="preserve"><value>✏️ Edit</value></data>
+  <data name="Btn_Delete" xml:space="preserve"><value>❌ Delete</value></data>
+  
+  <data name="Tooltip_Crm" xml:space="preserve"><value>Add/View CRM note</value></data>
+  <data name="Tooltip_Opportunity" xml:space="preserve"><value>Move to opportunities</value></data>
+  <data name="Tooltip_Trash" xml:space="preserve"><value>Move to trash</value></data>
+  <data name="Tooltip_Block" xml:space="preserve"><value>Block company</value></data>
+  <data name="Tooltip_Blacklisted" xml:space="preserve"><value>This company is blacklisted (Automatically trashed)</value></data>
+  <data name="Tooltip_CrmHistory" xml:space="preserve"><value>This company has history in CRM</value></data>
+  <data name="Tooltip_CrmWarning" xml:space="preserve"><value>CRM Warning (Caution)</value></data>
+  <data name="Tooltip_Unblock" xml:space="preserve"><value>Unblock company and restore offers</value></data>
+
+  <data name="Settings_AddUrlLabel" xml:space="preserve"><value>Add new URL to scrape:</value></data>
+  <data name="Settings_BtnAddUrl" xml:space="preserve"><value>Add URL</value></data>
+
+  <data name="Crm_Title" xml:space="preserve"><value>🏢 CRM - Company Database</value></data>
+  <data name="Crm_BtnAddCompany" xml:space="preserve"><value>➕ Add new company manually</value></data>
+  <data name="Grid_CompanyName" xml:space="preserve"><value>Company Name</value></data>
+  <data name="Grid_Reputation" xml:space="preserve"><value>Reputation</value></data>
+  <data name="Grid_LastContact" xml:space="preserve"><value>Last Contact</value></data>
+
+<data name="CrmWindow_Title" xml:space="preserve"><value>CRM Company Detail</value></data>
+  <data name="CrmWindow_CompanyName" xml:space="preserve"><value>Company Name</value></data>
+  <data name="CrmWindow_AliasesLabel" xml:space="preserve"><value>Company Aliases (comma separated):</value></data>
+  <data name="CrmWindow_AliasesTooltip" xml:space="preserve"><value>If the company operates under multiple names, list them here.</value></data>
+  <data name="CrmWindow_ReputationLabel" xml:space="preserve"><value>Reputation (Inbox Highlights):</value></data>
+  <data name="CrmWindow_RepNeutral" xml:space="preserve"><value>No color (Unknown)</value></data>
+  <data name="CrmWindow_RepInfo" xml:space="preserve"><value>Blue (History exists)</value></data>
+  <data name="CrmWindow_RepWarning" xml:space="preserve"><value>Orange (Issue/Warning)</value></data>
+  <data name="CrmWindow_HistoryLabel" xml:space="preserve"><value>Interaction history and notes:</value></data>
+  <data name="CrmWindow_BtnCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="CrmWindow_BtnSave" xml:space="preserve"><value>💾 Save to CRM</value></data>
+
+</root>
