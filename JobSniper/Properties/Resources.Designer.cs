@@ -115,6 +115,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný New Company.
+        /// </summary>
+        public static string Crm_NewCompany {
+            get {
+                return ResourceManager.GetString("Crm_NewCompany", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný 🏢 CRM - Company Database.
         /// </summary>
         public static string Crm_Title {
@@ -156,6 +165,15 @@ namespace JobSniper.Properties {
         public static string CrmWindow_BtnSave {
             get {
                 return ResourceManager.GetString("CrmWindow_BtnSave", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný ⛔ Company is blocked (auto-trash).
+        /// </summary>
+        public static string CrmWindow_ChkBlocked {
+            get {
+                return ResourceManager.GetString("CrmWindow_ChkBlocked", resourceCulture);
             }
         }
         

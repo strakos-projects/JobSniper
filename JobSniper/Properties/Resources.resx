@@ -98,5 +98,8 @@
   <data name="CrmWindow_HistoryLabel" xml:space="preserve"><value>Interaction history and notes:</value></data>
   <data name="CrmWindow_BtnCancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="CrmWindow_BtnSave" xml:space="preserve"><value>💾 Save to CRM</value></data>
+    <data name="CrmWindow_ChkBlocked" xml:space="preserve"><value>⛔ Company is blocked (auto-trash)</value></data>
+    <data name="Crm_NewCompany" xml:space="preserve"><value>New Company</value></data>
+
 
 </root>

@@ -226,10 +226,10 @@ namespace JobSniper
                     isNewProfile = true;
                 }
 
-                var crmWindow = new CrmWindow(profile, job.Company)
-                {
-                    Owner = this
-                };
+                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => string.Equals(b, a, StringComparison.OrdinalIgnoreCase))) ||
+                                     blacklistedCompanies.Any(b => string.Equals(b, job.Company, StringComparison.OrdinalIgnoreCase));
+
+                var crmWindow = new CrmWindow(profile, job.Company, isBlacklisted) { Owner = this };
 
                 if (crmWindow.ShowDialog() == true)
                 {
@@ -253,7 +253,7 @@ namespace JobSniper
 
                     CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                     SaveJobs();
-
+                    HandleBlacklistChangeFromCrm(profile, crmWindow.IsBlacklisted);
                     LogToConsole($"[CRM] Profil firmy '{job.Company}' byl aktualizován. Změna se projevila u {affectedCount} inzerátů.");
                 }
             }
@@ -419,7 +419,7 @@ namespace JobSniper
         private void BtnAddNewCompany_Click(object sender, RoutedEventArgs e)
         {
             var newProfile = new CompanyProfile();
-            var crmWindow = new CrmWindow(newProfile, "Nová firma") { Owner = this };
+            var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false) { Owner = this };
 
             if (crmWindow.ShowDialog() == true && newProfile.Aliases.Count > 0)
             {
@@ -432,6 +432,7 @@ namespace JobSniper
 
                 CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 SaveJobs();
+                HandleBlacklistChangeFromCrm(newProfile, crmWindow.IsBlacklisted);
             }
         }
 
@@ -440,7 +441,8 @@ namespace JobSniper
         {
             if (sender is Button btn && btn.Tag is CompanyProfile profile)
             {
-                var crmWindow = new CrmWindow(profile, profile.PrimaryName) { Owner = this };
+                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => string.Equals(b, a, StringComparison.OrdinalIgnoreCase)));
+                var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted) { Owner = this };
                 if (crmWindow.ShowDialog() == true)
                 {
                     SaveCrm();
@@ -452,10 +454,55 @@ namespace JobSniper
 
                     CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                     SaveJobs();
+                    HandleBlacklistChangeFromCrm(profile, crmWindow.IsBlacklisted);
                 }
             }
         }
+        private void HandleBlacklistChangeFromCrm(CompanyProfile profile, bool shouldBeBlacklisted)
+        {
+            bool changed = false;
 
+            if (shouldBeBlacklisted)
+            {
+                foreach (var alias in profile.Aliases)
+                {
+                    if (!blacklistedCompanies.Contains(alias))
+                    {
+                        blacklistedCompanies.Add(alias);
+                        changed = true;
+                    }
+                }
+                if (changed)
+                {
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                        if (job.Status == 0 || job.Status == 1) job.Status = 3;
+                }
+            }
+            else
+            {
+                foreach (var alias in profile.Aliases)
+                {
+                    if (blacklistedCompanies.Contains(alias))
+                    {
+                        blacklistedCompanies.Remove(alias);
+                        changed = true;
+                    }
+                }
+                if (changed)
+                {
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                        if (job.Status == 3) job.Status = 0;
+                }
+            }
+
+            if (changed)
+            {
+                SaveBlacklist();
+                SaveJobs();
+                CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                UpdateDashboardCounters();
+            }
+        }
         // Tlačítko: Smazat firmu (V tabulce CRM)
         private void BtnDeleteCrm_Click(object sender, RoutedEventArgs e)
         {

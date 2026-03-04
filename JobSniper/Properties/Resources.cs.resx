@@ -98,5 +98,6 @@
   <data name="CrmWindow_HistoryLabel" xml:space="preserve"><value>Historie interakcí a poznámky:</value></data>
   <data name="CrmWindow_BtnCancel" xml:space="preserve"><value>Zrušit</value></data>
   <data name="CrmWindow_BtnSave" xml:space="preserve"><value>💾 Uložit do CRM</value></data>
-
+   <data name="CrmWindow_ChkBlocked" xml:space="preserve"><value>⛔ Firma je zablokovaná (automaticky do koše)</value></data>
+   <data name="Crm_NewCompany" xml:space="preserve"><value>Nová firma</value></data>
 </root>

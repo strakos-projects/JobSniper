@@ -7,24 +7,22 @@ namespace JobSniper
     public partial class CrmWindow : Window
     {
         private CompanyProfile _profile;
-
-        // Konstruktor přijímá profil firmy (existující nebo nově vytvořený) a hlavní název
-        public CrmWindow(CompanyProfile profile, string primaryCompanyName)
+        public bool IsBlacklisted => ChkIsBlacklisted.IsChecked == true;
+        
+        public CrmWindow(CompanyProfile profile, string primaryCompanyName, bool isBlacklisted)
         {
             InitializeComponent();
             _profile = profile;
 
-            // Zobrazíme hlavní jméno firmy
             TxtCompanyName.Text = primaryCompanyName;
-
-            // Načtení dat z profilu do UI
             TxtAliases.Text = string.Join(", ", _profile.Aliases);
             TxtHistory.Text = _profile.InteractionHistory;
 
-            // Nastavení vybrané barvy (Radio buttonů)
             if (_profile.Reputation == 1) RbInfo.IsChecked = true;
             else if (_profile.Reputation == 2) RbWarning.IsChecked = true;
             else RbNeutral.IsChecked = true;
+
+            ChkIsBlacklisted.IsChecked = isBlacklisted;
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
