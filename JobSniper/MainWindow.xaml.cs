@@ -28,6 +28,8 @@ namespace JobSniper
         public MainWindow()
         {
             InitializeComponent();
+            CmbScrapers.ItemsSource = new List<string> { "ExampleScraper (Demo)" };
+            CmbScrapers.SelectedIndex = 0;
             DataGridJobs.ItemsSource = DatabaseOfJobs;
 
             LoadUrls();
@@ -124,11 +126,19 @@ namespace JobSniper
         private async Task StartScrapingEngineAsync()
         {
             LogToConsole("Starting scraper engine...");
-            var scraper = new ExampleScraper();
+           // var scraper = new ExampleScraper();
 
             foreach (var url in savedUrls)
             {
                 if (!url.IsActive) continue;
+                IScraper scraper = url.PortalName switch
+                {
+                    "ExampleScraper (Demo)" => new ExampleScraper(),
+                    // Tady si v lokální větvi přidáš: "JobsCz" => new JobsCzScraper(),
+                    _ => new ExampleScraper() // Výchozí pojistka pro staré adresy z předchozí verze
+                };
+
+                LogToConsole($"[Engine] Using {scraper.Name} for {url.Url}");
                 List<JobOffer> newJobs = await scraper.ScrapeUrlAsync(url.Url, LogToConsole);
 
                 Application.Current.Dispatcher.Invoke(() =>
@@ -396,8 +406,19 @@ namespace JobSniper
         private void BtnAddUrl_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(txtNewUrl.Text)) return;
-            savedUrls.Add(new ScrapeUrl { Url = txtNewUrl.Text, PortalName = txtNewUrl.Text.Contains("jobs.cz") ? "jobs.cz" : "Unknown", IsActive = true });
-            SaveUrls(); RefreshUrlList(); txtNewUrl.Text = "";
+
+            string selectedScraper = CmbScrapers.SelectedItem as string ?? "ExampleScraper (Demo)";
+
+            savedUrls.Add(new ScrapeUrl
+            {
+                Url = txtNewUrl.Text,
+                PortalName = selectedScraper, // Zde ukládáme zvolený scraper!
+                IsActive = true
+            });
+
+            SaveUrls();
+            RefreshUrlList();
+            txtNewUrl.Text = "";
         }
         private void BtnArchiv_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnArchiv, "🗄️ Archive (Inactive offers)", 4);
         private void LogToConsole(string message)
@@ -501,6 +522,22 @@ namespace JobSniper
                 SaveJobs();
                 CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 UpdateDashboardCounters();
+            }
+        }
+        // Tlačítko: Smazat URL z Nastavení
+        private void BtnDeleteUrl_Click(object sender, RoutedEventArgs e)
+        {
+            // Získáme konkrétní URL objekt z Tagu tlačítka
+            if (sender is Button btn && btn.Tag is ScrapeUrl urlItem)
+            {
+                var result = MessageBox.Show($"Opravdu chcete odebrat sledování této URL?\n{urlItem.Url}", "Odebrat URL", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    savedUrls.Remove(urlItem); // Odstraníme ze seznamu
+                    SaveUrls();                // Uložíme změny do urls.json
+                    RefreshUrlList();          // Obnovíme zobrazení v ListBoxu
+                }
             }
         }
         // Tlačítko: Smazat firmu (V tabulce CRM)

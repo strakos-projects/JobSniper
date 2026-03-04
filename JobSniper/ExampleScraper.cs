@@ -9,8 +9,9 @@ using System.Threading.Tasks;
 
 namespace JobSniper.Scrapers
 {
-    public class ExampleScraper
+    public class ExampleScraper : IScraper
     {
+        public string Name => "ExampleScraper (Demo)";
         private readonly string[] examplePages = new[]
         {
 @"<html>
