@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JobSniper
 {
@@ -15,14 +16,15 @@ namespace JobSniper
     {
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<JobOffer> SessionDuplicates { get; set; } = new ObservableCollection<JobOffer>();
-
+        public ObservableCollection<CompanyProfile> CrmProfiles { get; set; } = new ObservableCollection<CompanyProfile>();
         private readonly string urlsFilePath = "urls.json";
         private readonly string jobsFilePath = "jobs.json";
         private readonly string blacklistFilePath = "blacklist.json";
 
         private List<ScrapeUrl> savedUrls = new List<ScrapeUrl>();
         private List<string> blacklistedCompanies = new List<string>();
-
+        private readonly string crmFilePath = "crm_companies.json";
+        private List<CompanyProfile> crmProfiles = new List<CompanyProfile>();
         public MainWindow()
         {
             InitializeComponent();
@@ -30,6 +32,7 @@ namespace JobSniper
 
             LoadUrls();
             LoadBlacklist();
+            LoadCrm();
             LoadJobs();
 
             UpdateDashboardCounters();
@@ -58,6 +61,11 @@ namespace JobSniper
 
         private void SetView(Grid visibleGrid, Button activeButton, string title = "", int? filterStatus = null, bool showDuplicates = false)
         {
+        
+            GridCrm.Visibility = Visibility.Collapsed;
+
+        
+            if (BtnCrmTab != null) BtnCrmTab.Background = Brushes.Transparent;
             GridDashboard.Visibility = Visibility.Collapsed;
             GridTridicka.Visibility = Visibility.Collapsed;
             GridSettings.Visibility = Visibility.Collapsed;
@@ -139,6 +147,7 @@ namespace JobSniper
                             existingJob.LastSeen = DateTime.Now;
 
                             job.Url = cleanUrl;
+                            job.CrmReputation = GetCompanyReputation(job.Company);
                             SessionDuplicates.Add(job);
                             dupCount++;
                         }
@@ -146,6 +155,7 @@ namespace JobSniper
                         {
                             job.Url = cleanUrl;
                             if (blacklistedCompanies.Contains(job.Company)) job.Status = 3;
+                            job.CrmReputation = GetCompanyReputation(job.Company);
                             DatabaseOfJobs.Add(job);
                             addedCount++;
                         }
@@ -188,7 +198,61 @@ namespace JobSniper
                 LogToConsole($"[Maintenance] {archivedCount} old offers expired from Inbox and were moved to Archive.");
             }
         }
+        private void BtnCrm_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is JobOffer job)
+            {
+                if (SessionDuplicates.Contains(job))
+                {
+                    MessageBox.Show("Toto je pouze dočasný záznam relace. Otevřete CRM z Třídičky nebo Příležitostí.", "Informace", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
 
+                var profile = CrmProfiles.FirstOrDefault(p =>
+                    p.Aliases.Any(a => string.Equals(a, job.Company, StringComparison.OrdinalIgnoreCase))
+                );
+
+                bool isNewProfile = false;
+
+                if (profile == null)
+                {
+                    profile = new CompanyProfile();
+                    profile.Aliases.Add(job.Company);
+                    isNewProfile = true;
+                }
+
+                var crmWindow = new CrmWindow(profile, job.Company)
+                {
+                    Owner = this
+                };
+
+                if (crmWindow.ShowDialog() == true)
+                {
+                    if (isNewProfile)
+                    {
+                        CrmProfiles.Add(profile);
+                    }
+
+                    SaveCrm();
+
+                    int affectedCount = 0;
+                    foreach (var j in DatabaseOfJobs)
+                    {
+                        if (profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)) ||
+                            string.Equals(j.Company, job.Company, StringComparison.OrdinalIgnoreCase))
+                        {
+                            j.CrmReputation = profile.Reputation;
+                            affectedCount++;
+                        }
+                    }
+
+                    CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                    SaveJobs();
+
+                    LogToConsole($"[CRM] Profil firmy '{job.Company}' byl aktualizován. Změna se projevila u {affectedCount} inzerátů.");
+                }
+            }
+        }
         private void BtnOpenWeb_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is string url)
@@ -277,12 +341,35 @@ namespace JobSniper
             }
         }
 
+        private void LoadCrm()
+        {
+            if (File.Exists(crmFilePath))
+            {
+                var loaded = JsonSerializer.Deserialize<List<CompanyProfile>>(File.ReadAllText(crmFilePath)) ?? new List<CompanyProfile>();
+                CrmProfiles = new ObservableCollection<CompanyProfile>(loaded); 
+            }
+        }
+        private void SaveCrm() => File.WriteAllText(crmFilePath, JsonSerializer.Serialize(CrmProfiles, new JsonSerializerOptions { WriteIndented = true }));
+
+        // Pomocná funkce, která zjistí barvu firmy z CRM (hledá i v Aliasech)
+        private int GetCompanyReputation(string companyName)
+        {
+            var profile = CrmProfiles.FirstOrDefault(p =>
+                p.Aliases.Any(a => string.Equals(a, companyName, StringComparison.OrdinalIgnoreCase))
+            );
+            return profile != null ? profile.Reputation : 0;
+        }
         private void LoadJobs()
         {
             if (File.Exists(jobsFilePath))
             {
                 var loaded = JsonSerializer.Deserialize<List<JobOffer>>(File.ReadAllText(jobsFilePath)) ?? new List<JobOffer>();
-                foreach (var j in loaded) DatabaseOfJobs.Add(j);
+                foreach (var j in loaded)
+                {
+                    // Přidáno: zkontrolujeme aktuální reputaci v CRM
+                    j.CrmReputation = GetCompanyReputation(j.Company);
+                    DatabaseOfJobs.Add(j);
+                }
             }
         }
         private void SaveJobs() => File.WriteAllText(jobsFilePath, JsonSerializer.Serialize(DatabaseOfJobs, new JsonSerializerOptions { WriteIndented = true }));
@@ -316,5 +403,75 @@ namespace JobSniper
                 TxtConsoleLog.ScrollToEnd();
             });
         }
+        // Otevření záložky CRM
+        private void BtnCrmTab_Click(object sender, RoutedEventArgs e)
+        {
+            SetView(GridCrm, BtnCrmTab, "🏢 CRM - Databáze firem", null, false);
+            DataGridCrm.ItemsSource = CrmProfiles; // Připojí data do tabulky
+        }
+
+        // Tlačítko: Přidat novou firmu (Ručně)
+        private void BtnAddNewCompany_Click(object sender, RoutedEventArgs e)
+        {
+            var newProfile = new CompanyProfile();
+            var crmWindow = new CrmWindow(newProfile, "Nová firma") { Owner = this };
+
+            if (crmWindow.ShowDialog() == true && newProfile.Aliases.Count > 0)
+            {
+                CrmProfiles.Add(newProfile);
+                SaveCrm();
+
+                // Přepočítá barvy u inzerátů, kdyby od ní už v Třídičce nějaký byl
+                foreach (var job in DatabaseOfJobs.Where(j => newProfile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                    job.CrmReputation = newProfile.Reputation;
+
+                CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                SaveJobs();
+            }
+        }
+
+        // Tlačítko: Upravit firmu (V tabulce CRM)
+        private void BtnEditCrm_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is CompanyProfile profile)
+            {
+                var crmWindow = new CrmWindow(profile, profile.PrimaryName) { Owner = this };
+                if (crmWindow.ShowDialog() == true)
+                {
+                    SaveCrm();
+                    CollectionViewSource.GetDefaultView(CrmProfiles).Refresh(); // Aktualizuje tabulku CRM
+
+                    
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                        job.CrmReputation = profile.Reputation;
+
+                    CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                    SaveJobs();
+                }
+            }
+        }
+
+        // Tlačítko: Smazat firmu (V tabulce CRM)
+        private void BtnDeleteCrm_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is CompanyProfile profile)
+            {
+                var result = MessageBox.Show($"Opravdu chcete z CRM trvale smazat záznam firmy '{profile.PrimaryName}'?", "Potvrdit smazání", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    CrmProfiles.Remove(profile);
+                    SaveCrm();
+
+                    // Inzerátům této firmy resetuje barvu na výchozí
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                        job.CrmReputation = 0;
+
+                    CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                    SaveJobs();
+                }
+            }
+        }
     }
+
 }

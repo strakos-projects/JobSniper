@@ -1,0 +1,48 @@
+﻿<Window x:Class="JobSniper.CrmWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CRM Company Detail" Height="550" Width="500"
+        WindowStartupLocation="CenterOwner" Background="#F0F2F5" FontFamily="Segoe UI" ResizeMode="NoResize">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Name="TxtCompanyName" Grid.Row="0" Text="Company Name" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" Margin="0,0,0,20"/>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,15">
+            <TextBlock Text="Company Aliases (comma separated):" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
+            <TextBox Name="TxtAliases" Padding="8" FontSize="14" ToolTip="If the company operates under multiple names, list them here."/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Margin="0,0,0,15">
+            <TextBlock Text="Reputation (Inbox Highlights):" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                <RadioButton Name="RbNeutral" Content="No color (Unknown)" IsChecked="True" Margin="0,0,15,0"/>
+                <RadioButton Name="RbInfo" Content="Blue (History exists)" Foreground="#3498DB" FontWeight="Bold" Margin="0,0,15,0"/>
+                <RadioButton Name="RbWarning" Content="Orange (Issue/Warning)" Foreground="#F39C12" FontWeight="Bold"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Margin="0,0,0,20">
+            <TextBlock Text="Interaction history and notes:" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
+            <TextBox Name="TxtHistory" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="8" FontSize="14" Height="200"/>
+        </StackPanel>
+
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="1" Click="BtnCancel_Click" Content="Cancel" Width="100" Padding="10,8" Margin="0,0,10,0" Background="#95A5A6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+            <Button Grid.Column="2" Click="BtnSave_Click" Content="💾 Save to CRM" Width="130" Padding="10,8" Background="#2ECC71" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        </Grid>
+    </Grid>
+</Window>

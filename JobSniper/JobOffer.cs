@@ -17,6 +17,7 @@ namespace JobSniper.Models
         public DateTime LastSeen { get; set; } = DateTime.Now;   
 
         public int Status { get; set; }
+        public int CrmReputation { get; set; } = 0;
 
         public string Location { get; set; }
         public string Salary { get; set; }

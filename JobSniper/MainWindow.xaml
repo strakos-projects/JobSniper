@@ -20,6 +20,7 @@
                 <Button x:Name="BtnKos" Click="BtnKos_Click" Content="🗑️ Trash (0)" Height="45" Margin="10,5" Background="Transparent" Foreground="White" FontSize="16" BorderThickness="0" Cursor="Hand" HorizontalContentAlignment="Left" Padding="20,0,0,0"/>
                 <Button x:Name="BtnArchiv" Click="BtnArchiv_Click" Content="🗄️ Archive (Expired)" Height="45" Margin="10,5" Background="Transparent" Foreground="White" FontSize="16" BorderThickness="0" Cursor="Hand" HorizontalContentAlignment="Left" Padding="20,0,0,0"/>
                 <Button x:Name="BtnDuplicity" Click="BtnDuplicity_Click" Content="🔁 Session Duplicates (0)" Height="45" Margin="10,5" Background="Transparent" Foreground="White" FontSize="16" BorderThickness="0" Cursor="Hand" HorizontalContentAlignment="Left" Padding="20,0,0,0"/>
+                <Button x:Name="BtnCrmTab" Click="BtnCrmTab_Click" Content="🏢 CRM (Companies)" Height="45" Margin="10,5" Background="Transparent" Foreground="White" FontSize="16" BorderThickness="0" Cursor="Hand" HorizontalContentAlignment="Left" Padding="20,0,0,0"/>
 
                 <Button x:Name="BtnSettings" Click="BtnSettings_Click" Content="⚙️ Settings &amp; Filters" Height="45" Margin="10,5" Background="Transparent" Foreground="White" FontSize="16" BorderThickness="0" Cursor="Hand" HorizontalContentAlignment="Left" Padding="20,0,0,0"/>
             </StackPanel>
@@ -98,6 +99,18 @@
                                                         <Setter Property="FontWeight" Value="Bold"/>
                                                         <Setter Property="ToolTip" Value="This company is blacklisted (Automatically trashed)"/>
                                                     </DataTrigger>
+
+                                                    <DataTrigger Binding="{Binding CrmReputation}" Value="1">
+                                                        <Setter Property="Foreground" Value="#3498DB"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                        <Setter Property="ToolTip" Value="Tato firma má historii v CRM"/>
+                                                    </DataTrigger>
+
+                                                    <DataTrigger Binding="{Binding CrmReputation}" Value="2">
+                                                        <Setter Property="Foreground" Value="#F39C12"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                        <Setter Property="ToolTip" Value="Varování z CRM (Obezřetnost)"/>
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBlock.Style>
@@ -115,6 +128,8 @@
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button Content="🌐 Web" Tag="{Binding Url}" Click="BtnOpenWeb_Click" Margin="0,0,5,0" Padding="8,3" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+
+                                        <Button Content="📝" ToolTip="Přidat/Zobrazit poznámku v CRM" Tag="{Binding}" Click="BtnCrm_Click" Margin="0,0,5,0" Padding="8,3" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
                                         <Button Content="👍" ToolTip="Move to opportunities" Tag="{Binding}" Click="BtnZajimave_Click" Margin="0,0,5,0" Padding="8,3" Background="#2ECC71" Foreground="White" BorderThickness="0" Cursor="Hand"/>
                                         <Button Content="👎" ToolTip="Move to trash" Tag="{Binding}" Click="BtnSkryt_Click" Margin="0,0,5,0" Padding="8,3" Background="#95A5A6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
 
@@ -174,6 +189,61 @@
             </Border>
             <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="20">
                 <ListBox Name="lstUrls" DisplayMemberPath="Url" BorderThickness="0"/>
+            </Border>
+        </Grid>
+        <Grid x:Name="GridCrm" Grid.Column="1" Margin="30" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="🏢 CRM - Company Database" FontSize="32" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,20"/>
+
+            <Button Grid.Row="1" Content="➕ Add new company manually" Click="BtnAddNewCompany_Click" HorizontalAlignment="Left" Padding="15,8" Background="#2ECC71" Foreground="White" BorderThickness="0" Cursor="Hand" Margin="0,0,0,15"/>
+
+            <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="10">
+                <DataGrid Name="DataGridCrm" AutoGenerateColumns="False" IsReadOnly="True" Background="White" RowBackground="#F8F9FA" AlternatingRowBackground="White" BorderBrush="#EEE" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEE" VerticalContentAlignment="Center">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Company Name" Binding="{Binding PrimaryName}" Width="250" />
+
+                        <DataGridTemplateColumn Header="Reputation" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Reputation}" HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Reputation}" Value="1">
+                                                        <Setter Property="Foreground" Value="#3498DB"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Reputation}" Value="2">
+                                                        <Setter Property="Foreground" Value="#F39C12"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Last Contact" Binding="{Binding LastInteraction, StringFormat=\{0:dd.MM.yyyy\}}" Width="120" />
+
+                        <DataGridTemplateColumn Header="Actions" Width="Auto">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="✏️ Edit" Tag="{Binding}" Click="BtnEditCrm_Click" Margin="0,0,5,0" Padding="8,3" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                                        <Button Content="❌ Delete" Tag="{Binding}" Click="BtnDeleteCrm_Click" Padding="8,3" Background="#E74C3C" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
             </Border>
         </Grid>
     </Grid>
