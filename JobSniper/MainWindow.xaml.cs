@@ -153,6 +153,7 @@ namespace JobSniper
             _isShowingDuplicates = showDuplicates;
 
             if (TxtSearch != null) TxtSearch.Text = "";
+            if (TxtCrmSearch != null) TxtCrmSearch.Text = "";
 
             ApplyFilters();
         }
@@ -689,6 +690,39 @@ namespace JobSniper
                     CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                     SaveJobs();
                 }
+            }
+        }
+        private void TxtCrmSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (DataGridCrm?.ItemsSource != null)
+            {
+                ICollectionView view = CollectionViewSource.GetDefaultView(DataGridCrm.ItemsSource);
+                string query = TxtCrmSearch.Text?.ToLower().Trim();
+
+                if (string.IsNullOrEmpty(query))
+                {
+                    view.Filter = null; // Pokud je pole prázdné, zrušíme filtr
+                }
+                else
+                {
+                    view.Filter = (item) =>
+                    {
+                        var profile = item as CompanyProfile;
+                        if (profile == null) return false;
+
+                        // Hledáme v primárním názvu
+                        bool matchName = profile.PrimaryName != null && profile.PrimaryName.ToLower().Contains(query);
+
+                        // Hledáme ve všech aliasech
+                        bool matchAliases = profile.Aliases != null && profile.Aliases.Any(a => a.ToLower().Contains(query));
+
+                        // Hledáme v historii interakcí (zde jsou např. ta telefonní čísla)
+                        bool matchHistory = profile.InteractionHistory != null && profile.InteractionHistory.ToLower().Contains(query);
+
+                        return matchName || matchAliases || matchHistory;
+                    };
+                }
+                view.Refresh();
             }
         }
     }
