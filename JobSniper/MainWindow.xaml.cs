@@ -360,7 +360,10 @@ namespace JobSniper
                         if (existingJob != null)
                         {
                             existingJob.LastSeen = DateTime.Now;
-
+                            if (existingJob.Status == 4)
+                            {
+                                existingJob.Status = 0;
+                            }
                             job.Url = cleanUrl;
                             job.CrmReputation = GetCompanyReputation(job.Company);
                             SessionDuplicates.Add(job);
