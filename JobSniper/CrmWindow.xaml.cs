@@ -23,6 +23,7 @@ namespace JobSniper
             else RbNeutral.IsChecked = true;
 
             ChkIsBlacklisted.IsChecked = isBlacklisted;
+            CmbPotential.SelectedIndex = _profile.Potential;
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -45,6 +46,7 @@ namespace JobSniper
 
             // Řekneme hlavnímu oknu, že se uložení povedlo a zavřeme okno
             this.DialogResult = true;
+            _profile.Potential = CmbPotential.SelectedIndex >= 0 ? CmbPotential.SelectedIndex : 0;
             this.Close();
         }
 

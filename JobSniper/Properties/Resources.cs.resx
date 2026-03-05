@@ -104,4 +104,11 @@
   <data name="CrmWindow_BtnSave" xml:space="preserve"><value>💾 Uložit do CRM</value></data>
    <data name="CrmWindow_ChkBlocked" xml:space="preserve"><value>⛔ Firma je zablokovaná (automaticky do koše)</value></data>
    <data name="Crm_NewCompany" xml:space="preserve"><value>Nová firma</value></data>
+   <data name="Pot_Label" xml:space="preserve"><value>Potenciál pro spolupráci:</value></data>
+  <data name="Pot_0" xml:space="preserve"><value>0 - Zatím nehodnoceno</value></data>
+  <data name="Pot_1" xml:space="preserve"><value>🟢 A - Velmi nadějné (Čerstvé / Top)</value></data>
+  <data name="Pot_2" xml:space="preserve"><value>🟡 B - Záložní varianta (Zadní vrátka)</value></data>
+  <data name="Pot_3" xml:space="preserve"><value>🟠 C - Rizikové / Podezřelé</value></data>
+  <data name="Pot_4" xml:space="preserve"><value>⚪ E - Uzavřeno / Mrtvé (Exp)</value></data>
+  <data name="Grid_Potential" xml:space="preserve"><value>Potenciál</value></data>
 </root>

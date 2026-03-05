@@ -103,6 +103,12 @@
   <data name="CrmWindow_BtnSave" xml:space="preserve"><value>💾 Save to CRM</value></data>
     <data name="CrmWindow_ChkBlocked" xml:space="preserve"><value>⛔ Company is blocked (auto-trash)</value></data>
     <data name="Crm_NewCompany" xml:space="preserve"><value>New Company</value></data>
-
+<data name="Pot_Label" xml:space="preserve"><value>Cooperation Potential:</value></data>
+  <data name="Pot_0" xml:space="preserve"><value>0 - Not evaluated yet</value></data>
+  <data name="Pot_1" xml:space="preserve"><value>🟢 A - Very promising (Fresh / Top)</value></data>
+  <data name="Pot_2" xml:space="preserve"><value>🟡 B - Backup option</value></data>
+  <data name="Pot_3" xml:space="preserve"><value>🟠 C - Risky / Suspicious</value></data>
+  <data name="Pot_4" xml:space="preserve"><value>⚪ E - Closed / Dead (Exp)</value></data>
+  <data name="Grid_Potential" xml:space="preserve"><value>Potential</value></data>
 
 </root>

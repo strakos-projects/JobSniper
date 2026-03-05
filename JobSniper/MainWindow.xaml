@@ -255,10 +255,43 @@
                 <DataGrid Name="DataGridCrm" AutoGenerateColumns="False" IsReadOnly="True" Background="White" RowBackground="#F8F9FA" AlternatingRowBackground="White" BorderBrush="#EEE" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEE" VerticalContentAlignment="Center">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_CompanyName}" Binding="{Binding PrimaryName}" Width="250" />
+                        <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_Potential}" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock FontWeight="Bold" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="➖" />
+                                                <Setter Property="Foreground" Value="#BDC3C7" />
 
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Potential}" Value="1">
+                                                        <Setter Property="Text" Value="🟢 A" />
+                                                        <Setter Property="Foreground" Value="#27AE60" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Potential}" Value="2">
+                                                        <Setter Property="Text" Value="🟡 B" />
+                                                        <Setter Property="Foreground" Value="#F39C12" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Potential}" Value="3">
+                                                        <Setter Property="Text" Value="🟠 C" />
+                                                        <Setter Property="Foreground" Value="#D35400" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Potential}" Value="4">
+                                                        <Setter Property="Text" Value="⚪ E" />
+                                                        <Setter Property="Foreground" Value="#7F8C8D" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_Reputation}" Width="100">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
+                                    
                                     <TextBlock Text="{Binding Reputation}" HorizontalAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">

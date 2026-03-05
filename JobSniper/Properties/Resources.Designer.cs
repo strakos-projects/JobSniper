@@ -340,6 +340,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Potential.
+        /// </summary>
+        public static string Grid_Potential {
+            get {
+                return ResourceManager.GetString("Grid_Potential", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Reputation.
         /// </summary>
         public static string Grid_Reputation {
@@ -435,6 +444,60 @@ namespace JobSniper.Properties {
         public static string Menu_Trash_Format {
             get {
                 return ResourceManager.GetString("Menu_Trash_Format", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný 0 - Not evaluated yet.
+        /// </summary>
+        public static string Pot_0 {
+            get {
+                return ResourceManager.GetString("Pot_0", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný 🟢 A - Very promising (Fresh / Top).
+        /// </summary>
+        public static string Pot_1 {
+            get {
+                return ResourceManager.GetString("Pot_1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný 🟡 B - Backup option.
+        /// </summary>
+        public static string Pot_2 {
+            get {
+                return ResourceManager.GetString("Pot_2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný 🟠 C - Risky / Suspicious.
+        /// </summary>
+        public static string Pot_3 {
+            get {
+                return ResourceManager.GetString("Pot_3", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný ⚪ E - Closed / Dead (Exp).
+        /// </summary>
+        public static string Pot_4 {
+            get {
+                return ResourceManager.GetString("Pot_4", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Cooperation Potential:.
+        /// </summary>
+        public static string Pot_Label {
+            get {
+                return ResourceManager.GetString("Pot_Label", resourceCulture);
             }
         }
         

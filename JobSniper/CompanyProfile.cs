@@ -16,8 +16,8 @@ namespace JobSniper
         public List<string> Aliases { get; set; } = new List<string>();
 
         
-        public int Reputation { get; set; } 
-
+        public int Reputation { get; set; }
+        public int Potential { get; set; } = 0;
         public string InteractionHistory { get; set; } 
 
         public DateTime LastInteraction { get; set; } = DateTime.Now;
