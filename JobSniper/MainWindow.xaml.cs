@@ -3,12 +3,13 @@ using JobSniper.Scrapers;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
-using System.Reflection;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JobSniper
@@ -61,7 +62,48 @@ namespace JobSniper
 
             _ = StartScrapingEngineAsync();
         }
+        // 1. Normalizační metoda - Očistí název firmy od balastu
+        private string NormalizeCompanyName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return "";
 
+            // Převod na malá písmena
+            string normalized = name.ToLowerInvariant();
+
+            // Nahrazení interpunkce (tečky, čárky, pomlčky, svislítka) za mezeru
+            normalized = Regex.Replace(normalized, @"[.,\-\|]", " ");
+
+            // Odstranění běžných právních forem (hledáme pouze celá slova, viz \b)
+            string[] formsToRemove = { "s r o", "sro", "spol s r o", "spol", "a s", "as", "z s", "o p s", "z u", "inc", "llc", "corp", "corporation", "ltd", "limited", "gmbh", "sp z o o" };
+            foreach (var form in formsToRemove)
+            {
+                normalized = Regex.Replace(normalized, $@"\b{form}\b", " ");
+            }
+
+            // Odstranění vícenásobných mezer a oříznutí krajů
+            normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+
+            return normalized;
+        }
+
+        // 2. Chytré porovnávání s využitím normalizace
+        private bool IsCompanyMatch(string alias, string jobCompany)
+        {
+            if (string.IsNullOrWhiteSpace(alias) || string.IsNullOrWhiteSpace(jobCompany)) return false;
+
+            string normAlias = NormalizeCompanyName(alias);
+            string normJobCompany = NormalizeCompanyName(jobCompany);
+
+            if (string.IsNullOrEmpty(normAlias) || string.IsNullOrEmpty(normJobCompany)) return false;
+
+            // A) Přesná shoda po očištění (např. "rockwell automation" == "rockwell automation")
+            if (normAlias == normJobCompany) return true;
+
+            // B) Částečná shoda - obalíme mezerami, aby např. "auto" nesouhlasilo s "automotive"
+            if ($" {normJobCompany} ".Contains($" {normAlias} ")) return true;
+
+            return false;
+        }
         private void UpdateDashboardCounters()
         {
             int inbox = DatabaseOfJobs.Count(j => j.Status == 0);
@@ -281,7 +323,8 @@ namespace JobSniper
                 }
 
                 var profile = CrmProfiles.FirstOrDefault(p =>
-                    p.Aliases.Any(a => string.Equals(a, job.Company, StringComparison.OrdinalIgnoreCase))
+                    //p.Aliases.Any(a => string.Equals(a, job.Company, StringComparison.OrdinalIgnoreCase))
+                    p.Aliases.Any(a => IsCompanyMatch(a, job.Company))
                 );
 
                 bool isNewProfile = false;
@@ -293,8 +336,8 @@ namespace JobSniper
                     isNewProfile = true;
                 }
 
-                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => string.Equals(b, a, StringComparison.OrdinalIgnoreCase))) ||
-                                     blacklistedCompanies.Any(b => string.Equals(b, job.Company, StringComparison.OrdinalIgnoreCase));
+                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a) /*string.Equals(b, a, StringComparison.OrdinalIgnoreCase)*/)) ||
+                                     blacklistedCompanies.Any(b => IsCompanyMatch(b, job.Company)/*tring.Equals(b, job.Company, StringComparison.OrdinalIgnoreCase)*/);
 
                 var crmWindow = new CrmWindow(profile, job.Company, isBlacklisted) { Owner = this };
 
@@ -310,8 +353,8 @@ namespace JobSniper
                     int affectedCount = 0;
                     foreach (var j in DatabaseOfJobs)
                     {
-                        if (profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)) ||
-                            string.Equals(j.Company, job.Company, StringComparison.OrdinalIgnoreCase))
+                        if (profile.Aliases.Any(a => /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/ IsCompanyMatch(a, j.Company)) ||
+                            IsCompanyMatch(j.Company, job.Company)/*string.Equals(j.Company, job.Company, StringComparison.OrdinalIgnoreCase)*/)
                         {
                             j.CrmReputation = profile.Reputation;
                             affectedCount++;
@@ -455,7 +498,9 @@ namespace JobSniper
         private int GetCompanyReputation(string companyName)
         {
             var profile = CrmProfiles.FirstOrDefault(p =>
-                p.Aliases.Any(a => string.Equals(a, companyName, StringComparison.OrdinalIgnoreCase))
+                // p.Aliases.Any(a => string.Equals(a, companyName, StringComparison.OrdinalIgnoreCase))
+                p.Aliases.Any(a => IsCompanyMatch(a, companyName))
+
             );
             return profile != null ? profile.Reputation : 0;
         }
@@ -533,7 +578,7 @@ namespace JobSniper
                 SaveCrm();
 
                 // Přepočítá barvy u inzerátů, kdyby od ní už v Třídičce nějaký byl
-                foreach (var job in DatabaseOfJobs.Where(j => newProfile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                foreach (var job in DatabaseOfJobs.Where(j => newProfile.Aliases.Any(a => IsCompanyMatch(a, j.Company)/*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
                     job.CrmReputation = newProfile.Reputation;
 
                 CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
@@ -547,7 +592,7 @@ namespace JobSniper
         {
             if (sender is Button btn && btn.Tag is CompanyProfile profile)
             {
-                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => string.Equals(b, a, StringComparison.OrdinalIgnoreCase)));
+                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a)/* string.Equals(b, a, StringComparison.OrdinalIgnoreCase)*/));
                 var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted) { Owner = this };
                 if (crmWindow.ShowDialog() == true)
                 {
@@ -555,7 +600,7 @@ namespace JobSniper
                     CollectionViewSource.GetDefaultView(CrmProfiles).Refresh(); // Aktualizuje tabulku CRM
 
                     
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company)/* string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
                         job.CrmReputation = profile.Reputation;
 
                     CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
@@ -580,7 +625,7 @@ namespace JobSniper
                 }
                 if (changed)
                 {
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company) /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
                         if (job.Status == 0 || job.Status == 1) job.Status = 3;
                 }
             }
@@ -596,7 +641,7 @@ namespace JobSniper
                 }
                 if (changed)
                 {
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company) /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
                         if (job.Status == 3) job.Status = 0;
                 }
             }
@@ -638,7 +683,7 @@ namespace JobSniper
                     SaveCrm();
 
                     // Inzerátům této firmy resetuje barvu na výchozí
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase))))
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company) /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
                         job.CrmReputation = 0;
 
                     CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
