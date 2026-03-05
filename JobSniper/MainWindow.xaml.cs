@@ -46,8 +46,8 @@ namespace JobSniper
                 _availableScrapers[instance.Name] = type;
             }
 
-            CmbScrapers.ItemsSource = new List<string> { "ExampleScraper (Demo)", "Jobs.cz (Ostrý)" };
-            CmbScrapers.SelectedIndex = 0;
+            CmbScrapers.ItemsSource = _availableScrapers.Keys.ToList();
+            if (CmbScrapers.Items.Count > 0) CmbScrapers.SelectedIndex = 0;
 
             ShowDashboard();
 
