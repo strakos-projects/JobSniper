@@ -707,6 +707,25 @@ namespace JobSniper
 
             if (crmWindow.ShowDialog() == true && newProfile.Aliases.Count > 0)
             {
+                foreach (var newAlias in newProfile.Aliases)
+                {
+                    string normNewAlias = NormalizeCompanyName(newAlias);
+
+                    // ... a zkusíme je najít v existujících CRM profilech
+                    var existingProfile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => NormalizeCompanyName(a) == normNewAlias));
+
+                    if (existingProfile != null)
+                    {
+                        MessageBox.Show(
+                                string.Format(Properties.Resources.Msg_CompanyExistsText, newAlias, existingProfile.PrimaryName),
+                                Properties.Resources.Msg_CompanyExistsTitle,
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+
+                        return; // Okamžitě ukončíme metodu, firma se NEpřidá
+                    }
+                }
+
                 CrmProfiles.Add(newProfile);
                 SaveCrm();
                 RefreshCrmCache();

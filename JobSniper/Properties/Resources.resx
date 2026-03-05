@@ -110,5 +110,6 @@
   <data name="Pot_3" xml:space="preserve"><value>🟠 C - Risky / Suspicious</value></data>
   <data name="Pot_4" xml:space="preserve"><value>⚪ E - Closed / Dead (Exp)</value></data>
   <data name="Grid_Potential" xml:space="preserve"><value>Potential</value></data>
-
+<data name="Msg_CompanyExistsTitle" xml:space="preserve"><value>Company already exists</value></data>
+  <data name="Msg_CompanyExistsText" xml:space="preserve"><value>Company '{0}' cannot be added because it already exists in the CRM under the name '{1}'.</value></data>
 </root>

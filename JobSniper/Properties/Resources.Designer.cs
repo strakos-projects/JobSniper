@@ -448,6 +448,24 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Company &apos;{0}&apos; cannot be added because it already exists in the CRM under the name &apos;{1}&apos;..
+        /// </summary>
+        public static string Msg_CompanyExistsText {
+            get {
+                return ResourceManager.GetString("Msg_CompanyExistsText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Company already exists.
+        /// </summary>
+        public static string Msg_CompanyExistsTitle {
+            get {
+                return ResourceManager.GetString("Msg_CompanyExistsTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný 0 - Not evaluated yet.
         /// </summary>
         public static string Pot_0 {
