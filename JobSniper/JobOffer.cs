@@ -18,7 +18,7 @@ namespace JobSniper.Models
 
         public int Status { get; set; }
         public int CrmReputation { get; set; } = 0;
-
+        public string PortalName { get; set; } = string.Empty;
         public string Location { get; set; }
         public string Salary { get; set; }
     }

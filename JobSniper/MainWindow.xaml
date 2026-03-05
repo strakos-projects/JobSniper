@@ -98,7 +98,15 @@
                 <DataGrid Name="DataGridJobs" AutoGenerateColumns="False" IsReadOnly="True" Background="White" RowBackground="#F8F9FA" AlternatingRowBackground="White" BorderBrush="#EEE" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEE" VerticalContentAlignment="Center">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Position}" Binding="{Binding Title}" Width="*" />
-
+                        <DataGridTextColumn Header="Zdroj" Binding="{Binding PortalName}" Width="120">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#7F8C8D"/>
+                                    <Setter Property="FontStyle" Value="Italic"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_Company}" Width="180" SortMemberPath="Company">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

@@ -348,6 +348,7 @@ namespace JobSniper
 
                     foreach (var job in newJobs)
                     {
+                        job.PortalName = scraper.Name;
                         string cleanUrl = job.Url;
                         int qMarkIndex = cleanUrl.IndexOf('?');
                         if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
