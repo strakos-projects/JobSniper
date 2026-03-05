@@ -133,7 +133,7 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
-        ///   Vyhledá lokalizovaný řetězec podobný Company Aliases (comma separated):.
+        ///   Vyhledá lokalizovaný řetězec podobný Company aliases (separated by three semicolons ;;;):.
         /// </summary>
         public static string CrmWindow_AliasesLabel {
             get {
@@ -142,7 +142,7 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
-        ///   Vyhledá lokalizovaný řetězec podobný If the company operates under multiple names, list them here..
+        ///   Vyhledá lokalizovaný řetězec podobný If the company uses multiple names, enter them here and separate them using ;;; (e.g. Company A ;;; Company B)..
         /// </summary>
         public static string CrmWindow_AliasesTooltip {
             get {

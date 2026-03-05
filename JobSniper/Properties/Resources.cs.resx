@@ -93,8 +93,8 @@
 
   <data name="CrmWindow_Title" xml:space="preserve"><value>CRM Detail firmy</value></data>
   <data name="CrmWindow_CompanyName" xml:space="preserve"><value>Název firmy</value></data>
-  <data name="CrmWindow_AliasesLabel" xml:space="preserve"><value>Aliasy firmy (oddělené čárkou):</value></data>
-  <data name="CrmWindow_AliasesTooltip" xml:space="preserve"><value>Pokud firma vystupuje pod více jmény, napište je sem.</value></data>
+  <data name="CrmWindow_AliasesLabel" xml:space="preserve"><value>Aliasy firmy (oddělené třemi středníky ;;;):</value></data>
+  <data name="CrmWindow_AliasesTooltip" xml:space="preserve"><value>Pokud firma vystupuje pod více jmény, napište je sem a oddělte pomocí ;;; (např. Firma A ;;; Firma B).</value></data>
   <data name="CrmWindow_ReputationLabel" xml:space="preserve"><value>Reputace (Zvýraznění v Třídičce):</value></data>
   <data name="CrmWindow_RepNeutral" xml:space="preserve"><value>Bez barvy (Neznámá)</value></data>
   <data name="CrmWindow_RepInfo" xml:space="preserve"><value>Modrá (Mám historii)</value></data>

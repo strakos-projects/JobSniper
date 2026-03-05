@@ -15,7 +15,7 @@ namespace JobSniper
             _profile = profile;
 
             TxtCompanyName.Text = primaryCompanyName;
-            TxtAliases.Text = string.Join(", ", _profile.Aliases);
+            TxtAliases.Text = string.Join(" ;;; ", _profile.Aliases);
             TxtHistory.Text = _profile.InteractionHistory;
 
             if (_profile.Reputation == 1) RbInfo.IsChecked = true;
@@ -29,10 +29,10 @@ namespace JobSniper
         {
             // Uložení aliasů (rozdělíme podle čárky, ořízneme mezery a vymažeme prázdné)
             _profile.Aliases = TxtAliases.Text
-                .Split(',')
-                .Select(a => a.Trim())
-                .Where(a => !string.IsNullOrEmpty(a))
-                .ToList();
+                 .Split(new string[] { ";;;" }, StringSplitOptions.None)
+                 .Select(a => a.Trim())
+                 .Where(a => !string.IsNullOrEmpty(a))
+                 .ToList();
 
             // Uložení historie
             _profile.InteractionHistory = TxtHistory.Text;

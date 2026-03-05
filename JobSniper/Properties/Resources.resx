@@ -92,8 +92,8 @@
 
 <data name="CrmWindow_Title" xml:space="preserve"><value>CRM Company Detail</value></data>
   <data name="CrmWindow_CompanyName" xml:space="preserve"><value>Company Name</value></data>
-  <data name="CrmWindow_AliasesLabel" xml:space="preserve"><value>Company Aliases (comma separated):</value></data>
-  <data name="CrmWindow_AliasesTooltip" xml:space="preserve"><value>If the company operates under multiple names, list them here.</value></data>
+<data name="CrmWindow_AliasesLabel" xml:space="preserve"><value>Company aliases (separated by three semicolons ;;;):</value></data>
+  <data name="CrmWindow_AliasesTooltip" xml:space="preserve"><value>If the company uses multiple names, enter them here and separate them using ;;; (e.g. Company A ;;; Company B).</value></data>
   <data name="CrmWindow_ReputationLabel" xml:space="preserve"><value>Reputation (Inbox Highlights):</value></data>
   <data name="CrmWindow_RepNeutral" xml:space="preserve"><value>No color (Unknown)</value></data>
   <data name="CrmWindow_RepInfo" xml:space="preserve"><value>Blue (History exists)</value></data>
