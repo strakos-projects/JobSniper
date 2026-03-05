@@ -24,6 +24,8 @@ namespace JobSniper
 
 
         private Dictionary<string, Type> _availableScrapers = new Dictionary<string, Type>();
+        // Paměť pro rychlé hledání reputace
+        private Dictionary<string, int> _companyReputationCache = new Dictionary<string, int>();
 
         private readonly string urlsFilePath = "urls.json";
         private readonly string jobsFilePath = "jobs.json";
@@ -44,21 +46,119 @@ namespace JobSniper
                 _availableScrapers[instance.Name] = type;
             }
 
-            CmbScrapers.ItemsSource = _availableScrapers.Keys.ToList();
-            if (_availableScrapers.Count > 0) CmbScrapers.SelectedIndex = 0;
-
             CmbScrapers.ItemsSource = new List<string> { "ExampleScraper (Demo)", "Jobs.cz (Ostrý)" };
             CmbScrapers.SelectedIndex = 0;
+
+            ShowDashboard();
+
+            // PŘIDÁNO: Načítání spustíme až ve chvíli, kdy už je okno fyzicky vidět na obrazovce
+            this.Loaded += MainWindow_Loaded;
+        }
+        // 1. Zajišťuje, že Cache je neustále aktuální
+        private void RefreshCrmCache()
+        {
+            _companyReputationCache.Clear();
+            foreach (var profile in CrmProfiles)
+            {
+                foreach (var alias in profile.Aliases)
+                {
+                    string normAlias = NormalizeCompanyName(alias);
+                    if (!string.IsNullOrEmpty(normAlias) && !_companyReputationCache.ContainsKey(normAlias))
+                    {
+                        _companyReputationCache[normAlias] = profile.Reputation;
+                    }
+                }
+            }
+        }
+
+        // 2. Bleskové načítání na pozadí, které nezamrazí okno
+        // 2. Bleskové načítání na pozadí, které nezamrazí okno
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            GridDashboard.IsEnabled = false; // Zakážeme na vteřinu klikání
+            LogToConsole("Začínám načítat databázi na pozadí...");
+
+            // Třída Progress automaticky zajistí bezpečný přepis textu v UI vlákně z vlákna na pozadí
+            var progress = new Progress<string>(status =>
+            {
+                Title = $"JobSniper - {status}";
+            });
+
+            // Dočasné lokální seznamy (aby UI vlákno nebylo rušeno)
+            var tempUrls = new List<ScrapeUrl>();
+            var tempBlacklist = new List<string>();
+            var tempCrm = new List<CompanyProfile>();
+            var tempJobs = new List<JobOffer>();
+
+            // VŠECHNA PRÁCE SE TEĎ DĚJE NA POZADÍ (UI je plně responzivní)
+            await Task.Run(() =>
+            {
+                var p = (IProgress<string>)progress;
+
+                p.Report("Načítám nastavení a blacklist...");
+                if (File.Exists(urlsFilePath)) tempUrls = JsonSerializer.Deserialize<List<ScrapeUrl>>(File.ReadAllText(urlsFilePath)) ?? new List<ScrapeUrl>();
+                if (File.Exists(blacklistFilePath)) tempBlacklist = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(blacklistFilePath)) ?? new List<string>();
+
+                p.Report("Načítám CRM databázi...");
+                if (File.Exists(crmFilePath)) tempCrm = JsonSerializer.Deserialize<List<CompanyProfile>>(File.ReadAllText(crmFilePath)) ?? new List<CompanyProfile>();
+
+                p.Report("Optimalizuji paměť...");
+                _companyReputationCache.Clear();
+                foreach (var profile in tempCrm)
+                {
+                    foreach (var alias in profile.Aliases)
+                    {
+                        string normAlias = NormalizeCompanyName(alias);
+                        if (!string.IsNullOrEmpty(normAlias) && !_companyReputationCache.ContainsKey(normAlias))
+                            _companyReputationCache[normAlias] = profile.Reputation;
+                    }
+                }
+
+                if (File.Exists(jobsFilePath))
+                {
+                    p.Report("Čtu inzeráty z disku...");
+                    tempJobs = JsonSerializer.Deserialize<List<JobOffer>>(File.ReadAllText(jobsFilePath)) ?? new List<JobOffer>();
+
+                    int total = tempJobs.Count;
+                    int current = 0;
+
+                    foreach (var j in tempJobs)
+                    {
+                        current++;
+                        // Abychom nezahltili UI vykreslováním, hlásíme progres jen každých 50 inzerátů nebo na konci
+                        if (current % 50 == 0 || current == total)
+                        {
+                            p.Report($"Zpracovávám inzeráty: {current} z {total}");
+                        }
+
+                        string normCompany = NormalizeCompanyName(j.Company);
+                        // Bleskové přiřazení z Cache
+                        if (_companyReputationCache.TryGetValue(normCompany, out int rep))
+                            j.CrmReputation = rep;
+                        else
+                        {
+                            var profile = tempCrm.FirstOrDefault(pr => pr.Aliases.Any(a => IsCompanyMatch(a, j.Company)));
+                            j.CrmReputation = profile != null ? profile.Reputation : 0;
+                        }
+                    }
+                }
+            });
+
+            // 3. Po dokončení bezpečně nahrajeme data zpět do UI
+            savedUrls = tempUrls;
+            blacklistedCompanies = tempBlacklist;
+            CrmProfiles = new ObservableCollection<CompanyProfile>(tempCrm);
+            DatabaseOfJobs = new ObservableCollection<JobOffer>(tempJobs);
+
+            RefreshUrlList();
             DataGridJobs.ItemsSource = DatabaseOfJobs;
 
-            LoadUrls();
-            LoadBlacklist();
-            LoadCrm();
-            LoadJobs();
-
             UpdateDashboardCounters();
-            ShowDashboard();
-            LogToConsole("System ready and data loaded...");
+
+            // Vrátíme UI do normálu
+            GridDashboard.IsEnabled = true;
+            Title = "JobSniper - Můj kariérní zen";
+            LogToConsole("Systém připraven a data načtena...");
 
             _ = StartScrapingEngineAsync();
         }
@@ -350,6 +450,7 @@ namespace JobSniper
                     }
 
                     SaveCrm();
+                    RefreshCrmCache();
 
                     int affectedCount = 0;
                     foreach (var j in DatabaseOfJobs)
@@ -490,7 +591,20 @@ namespace JobSniper
             if (File.Exists(crmFilePath))
             {
                 var loaded = JsonSerializer.Deserialize<List<CompanyProfile>>(File.ReadAllText(crmFilePath)) ?? new List<CompanyProfile>();
-                CrmProfiles = new ObservableCollection<CompanyProfile>(loaded); 
+                CrmProfiles = new ObservableCollection<CompanyProfile>(loaded);
+                // ZRYCHLENÍ: Předpočítáme si normalizované aliasy a jejich reputaci
+                _companyReputationCache.Clear();
+                foreach (var profile in CrmProfiles)
+                {
+                    foreach (var alias in profile.Aliases)
+                    {
+                        string normAlias = NormalizeCompanyName(alias);
+                        if (!string.IsNullOrEmpty(normAlias) && !_companyReputationCache.ContainsKey(normAlias))
+                        {
+                            _companyReputationCache[normAlias] = profile.Reputation;
+                        }
+                    }
+                }
             }
         }
         private void SaveCrm() => File.WriteAllText(crmFilePath, JsonSerializer.Serialize(CrmProfiles, new JsonSerializerOptions { WriteIndented = true }));
@@ -498,6 +612,15 @@ namespace JobSniper
         // Pomocná funkce, která zjistí barvu firmy z CRM (hledá i v Aliasech)
         private int GetCompanyReputation(string companyName)
         {
+            if (string.IsNullOrWhiteSpace(companyName)) return 0;
+
+            string normCompany = NormalizeCompanyName(companyName);
+
+            // 1. Zkusíme bleskové hledání v naší předpočítané paměti (přesná shoda očištěného názvu)
+            if (_companyReputationCache.TryGetValue(normCompany, out int rep))
+            {
+                return rep;
+            }
             var profile = CrmProfiles.FirstOrDefault(p =>
                 // p.Aliases.Any(a => string.Equals(a, companyName, StringComparison.OrdinalIgnoreCase))
                 p.Aliases.Any(a => IsCompanyMatch(a, companyName))
@@ -510,13 +633,22 @@ namespace JobSniper
             if (File.Exists(jobsFilePath))
             {
                 var loaded = JsonSerializer.Deserialize<List<JobOffer>>(File.ReadAllText(jobsFilePath)) ?? new List<JobOffer>();
+
+                var tempJobs = new List<JobOffer>();
                 foreach (var j in loaded)
                 {
                     // Přidáno: zkontrolujeme aktuální reputaci v CRM
                     j.CrmReputation = GetCompanyReputation(j.Company);
-                    DatabaseOfJobs.Add(j);
+                    // DatabaseOfJobs.Add(j);
+                    tempJobs.Add(j);
                 }
+                DatabaseOfJobs = new ObservableCollection<JobOffer>(tempJobs);
             }
+            else
+            {
+                DatabaseOfJobs = new ObservableCollection<JobOffer>();
+            }
+            DataGridJobs.ItemsSource = DatabaseOfJobs;
         }
         private void SaveJobs() => File.WriteAllText(jobsFilePath, JsonSerializer.Serialize(DatabaseOfJobs, new JsonSerializerOptions { WriteIndented = true }));
 
@@ -577,6 +709,7 @@ namespace JobSniper
             {
                 CrmProfiles.Add(newProfile);
                 SaveCrm();
+                RefreshCrmCache();
 
                 // Přepočítá barvy u inzerátů, kdyby od ní už v Třídičce nějaký byl
                 foreach (var job in DatabaseOfJobs.Where(j => newProfile.Aliases.Any(a => IsCompanyMatch(a, j.Company)/*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
@@ -598,6 +731,7 @@ namespace JobSniper
                 if (crmWindow.ShowDialog() == true)
                 {
                     SaveCrm();
+                    RefreshCrmCache();
                     CollectionViewSource.GetDefaultView(CrmProfiles).Refresh(); // Aktualizuje tabulku CRM
 
                     
@@ -682,6 +816,7 @@ namespace JobSniper
                 {
                     CrmProfiles.Remove(profile);
                     SaveCrm();
+                    RefreshCrmCache();
 
                     // Inzerátům této firmy resetuje barvu na výchozí
                     foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company) /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
