@@ -2,8 +2,10 @@
 using JobSniper.Scrapers;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -162,6 +164,25 @@ namespace JobSniper
 
             _ = StartScrapingEngineAsync();
         }
+        private string RemoveDiacritics(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            var stringBuilder = new StringBuilder(capacity: normalizedString.Length);
+
+            foreach (var c in normalizedString)
+            {
+                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+                {
+                    stringBuilder.Append(c);
+                }
+            }
+
+            return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
+        }
         // 1. Normalizační metoda - Očistí název firmy od balastu
         private string NormalizeCompanyName(string name)
         {
@@ -169,7 +190,8 @@ namespace JobSniper
 
             // Převod na malá písmena
             string normalized = name.ToLowerInvariant();
-
+            normalized = RemoveDiacritics(normalized);
+            normalized = normalized.Replace(".", "");
             // Nahrazení interpunkce (tečky, čárky, pomlčky, svislítka) za mezeru
             normalized = Regex.Replace(normalized, @"[.,\-\|]", " ");
 
