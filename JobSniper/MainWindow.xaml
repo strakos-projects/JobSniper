@@ -114,11 +114,7 @@
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Status}" Value="3">
-                                                        <Setter Property="Foreground" Value="#E74C3C"/>
-                                                        <Setter Property="FontWeight" Value="Bold"/>
-                                                        <Setter Property="ToolTip" Value="{x:Static p:Resources.Tooltip_Blacklisted}"/>
-                                                    </DataTrigger>
+
 
                                                     <DataTrigger Binding="{Binding CrmReputation}" Value="1">
                                                         <Setter Property="Foreground" Value="#3498DB"/>
@@ -131,6 +127,13 @@
                                                         <Setter Property="FontWeight" Value="Bold"/>
                                                         <Setter Property="ToolTip" Value="{x:Static p:Resources.Tooltip_CrmWarning}"/>
                                                     </DataTrigger>
+
+                                                    <DataTrigger Binding="{Binding Status}" Value="3">
+                                                        <Setter Property="Foreground" Value="#E74C3C"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                        <Setter Property="ToolTip" Value="{x:Static p:Resources.Tooltip_Blacklisted}"/>
+                                                    </DataTrigger>
+                                                    
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBlock.Style>

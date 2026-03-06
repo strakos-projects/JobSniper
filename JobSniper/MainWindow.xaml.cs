@@ -395,7 +395,9 @@ namespace JobSniper
                         else
                         {
                             job.Url = cleanUrl;
-                            if (blacklistedCompanies.Contains(job.Company)) job.Status = 3;
+                            //if (blacklistedCompanies.Contains(job.Company)) job.Status = 3;
+                            if (IsCompanyBlacklisted(job.Company))
+                                job.Status = 3;
                             job.CrmReputation = GetCompanyReputation(job.Company);
                             DatabaseOfJobs.Add(job);
                             addedCount++;
@@ -551,7 +553,6 @@ namespace JobSniper
                 UpdateDashboardCounters();
             }
         }
-
         private void BtnBlokovatFirmu_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is JobOffer clickedJob)
@@ -559,16 +560,30 @@ namespace JobSniper
                 if (SessionDuplicates.Contains(clickedJob)) return;
 
                 string company = clickedJob.Company;
-                if (!blacklistedCompanies.Contains(company))
+
+                // 1. Zkusíme najít firmu v CRM, abychom získali všechny její aliasy
+                var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, company)));
+
+                // 2. Vytvoříme seznam všech názvů k blokování (všechny aliasy z CRM, nebo jen přesný název z inzerátu)
+                List<string> namesToBlock = profile != null ? profile.Aliases.ToList() : new List<string> { company };
+
+                bool blacklistChanged = false;
+                foreach (var name in namesToBlock)
                 {
-                    blacklistedCompanies.Add(company);
-                    SaveBlacklist();
+                    if (!IsCompanyBlacklisted(name))
+                    {
+                        blacklistedCompanies.Add(name);
+                        blacklistChanged = true;
+                    }
                 }
 
+                if (blacklistChanged) SaveBlacklist();
+
+                // 3. Projdeme všechny inzeráty a skryjeme ty, které odpovídají jakémukoliv aliasu z profilu
                 int affected = 0;
                 foreach (var job in DatabaseOfJobs)
                 {
-                    if (job.Company == company && (job.Status == 0 || job.Status == 1))
+                    if (namesToBlock.Any(name => IsCompanyMatch(job.Company, name)) && (job.Status == 0 || job.Status == 1 || job.Status == 2))
                     {
                         job.Status = 3;
                         affected++;
@@ -578,40 +593,48 @@ namespace JobSniper
                 SaveJobs();
                 CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 UpdateDashboardCounters();
-                LogToConsole($"[Blacklist] Company '{company}' blocked. Cleaned {affected} offers.");
+                LogToConsole($"[Blacklist] Firma '{company}' (včetně CRM aliasů) zablokována. Skryto {affected} inzerátů.");
+                DataGridJobs.Items.Refresh();
             }
         }
 
         private void BtnOdblokovatFirmu_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is JobOffer clickedJob)
+            if (sender is Button btn && btn.Tag is JobOffer selectedJob)
             {
-                if (SessionDuplicates.Contains(clickedJob)) return;
+                string company = selectedJob.Company;
 
-                string company = clickedJob.Company;
-                if (blacklistedCompanies.Contains(company))
+                // Najdeme profil v CRM pro všechny jeho aliasy
+                var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, company)));
+                List<string> namesToUnblock = profile != null ? profile.Aliases.ToList() : new List<string> { company };
+
+                bool blacklistChanged = false;
+                foreach (var name in namesToUnblock)
                 {
-                    blacklistedCompanies.Remove(company);
-                    SaveBlacklist();
+                    int removedCount = blacklistedCompanies.RemoveAll(b => IsCompanyMatch(b, name));
+                    if (removedCount > 0) blacklistChanged = true;
                 }
 
+                if (blacklistChanged) SaveBlacklist();
+
                 int restored = 0;
-                foreach (var job in DatabaseOfJobs)
+                foreach (var job in DatabaseOfJobs.Where(j => j.Status == 3))
                 {
-                    if (job.Company == company && job.Status == 3)
+                    // OPRAVA: Tady musí být 'job.Company', nikoliv 'j.Company'
+                    if (namesToUnblock.Any(name => IsCompanyMatch(name, job.Company)))
                     {
-                        job.Status = 0;
                         restored++;
+                        job.Status = 0;
                     }
                 }
 
+                LogToConsole($"[Blacklist] Firma '{company}' (včetně CRM aliasů) odblokována. Vráceno {restored} inzerátů.");
                 SaveJobs();
-                CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 UpdateDashboardCounters();
-                LogToConsole($"[Blacklist] Company '{company}' unblocked. Returned {restored} offers to Inbox.");
+                CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                DataGridJobs.Items.Refresh();
             }
         }
-
         private void LoadCrm()
         {
             if (File.Exists(crmFilePath))
@@ -771,7 +794,9 @@ namespace JobSniper
         {
             if (sender is Button btn && btn.Tag is CompanyProfile profile)
             {
-                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a)/* string.Equals(b, a, StringComparison.OrdinalIgnoreCase)*/));
+                //bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a)/* string.Equals(b, a, StringComparison.OrdinalIgnoreCase)*/));
+
+                bool isBlacklisted = profile.Aliases.Any(a => IsCompanyBlacklisted(a));
                 var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted) { Owner = this };
                 if (crmWindow.ShowDialog() == true)
                 {
@@ -789,50 +814,58 @@ namespace JobSniper
                 }
             }
         }
-        private void HandleBlacklistChangeFromCrm(CompanyProfile profile, bool shouldBeBlacklisted)
+        public void HandleBlacklistChangeFromCrm(CompanyProfile profile, bool isBlacklisted)
         {
-            bool changed = false;
-
-            if (shouldBeBlacklisted)
+            if (isBlacklisted)
             {
-                foreach (var alias in profile.Aliases)
+                if (!profile.Aliases.Any(a => IsCompanyBlacklisted(a)))
                 {
-                    if (!blacklistedCompanies.Contains(alias))
+                    blacklistedCompanies.Add(profile.PrimaryName);
+                    SaveBlacklist();
+
+                    // Změna statusu u všech inzerátů
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company))))
                     {
-                        blacklistedCompanies.Add(alias);
-                        changed = true;
+                        job.Status = 3;
                     }
-                }
-                if (changed)
-                {
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company) /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
-                        if (job.Status == 0 || job.Status == 1) job.Status = 3;
+                    SaveJobs();
+                    UpdateDashboardCounters();
+                    CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 }
             }
             else
             {
-                foreach (var alias in profile.Aliases)
+                int removedCount = blacklistedCompanies.RemoveAll(b => profile.Aliases.Any(a => IsCompanyMatch(b, a)));
+
+                if (removedCount > 0)
                 {
-                    if (blacklistedCompanies.Contains(alias))
+                    SaveBlacklist();
+
+                    foreach (var job in DatabaseOfJobs.Where(j => j.Status == 3 && profile.Aliases.Any(a => IsCompanyMatch(a, j.Company))))
                     {
-                        blacklistedCompanies.Remove(alias);
-                        changed = true;
+                        job.Status = 0;
                     }
+                    SaveJobs();
+                    UpdateDashboardCounters();
+                    CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 }
-                if (changed)
-                {
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company) /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
-                        if (job.Status == 3) job.Status = 0;
-                }
+            }
+        }
+
+        private bool IsCompanyBlacklisted(string companyName)
+        {
+            if (string.IsNullOrWhiteSpace(companyName)) return false;
+
+            if (blacklistedCompanies.Any(b => IsCompanyMatch(b, companyName) || IsCompanyMatch(companyName, b)))
+                return true;
+
+            var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, companyName)));
+            if (profile != null)
+            {
+                return profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a) || IsCompanyMatch(a, b)));
             }
 
-            if (changed)
-            {
-                SaveBlacklist();
-                SaveJobs();
-                CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
-                UpdateDashboardCounters();
-            }
+            return false;
         }
         // Tlačítko: Smazat URL z Nastavení
         private void BtnDeleteUrl_Click(object sender, RoutedEventArgs e)
