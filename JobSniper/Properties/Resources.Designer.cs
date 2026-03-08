@@ -601,6 +601,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný This job offer has not been detected on the portals for a while. It has probably expired..
+        /// </summary>
+        public static string Tooltip_JobInactive {
+            get {
+                return ResourceManager.GetString("Tooltip_JobInactive", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Move to opportunities.
         /// </summary>
         public static string Tooltip_Opportunity {

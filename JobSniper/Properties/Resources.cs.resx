@@ -113,4 +113,7 @@
   <data name="Grid_Potential" xml:space="preserve"><value>Potenciál</value></data>
   <data name="Msg_CompanyExistsTitle" xml:space="preserve"><value>Firma již existuje</value></data>
   <data name="Msg_CompanyExistsText" xml:space="preserve"><value>Firmu '{0}' nelze přidat, protože pod jménem '{1}' už v CRM existuje.</value></data>
+  <data name="Tooltip_JobInactive" xml:space="preserve">
+    <value>Tento inzerát už nebyl na portálech delší dobu detekován. Pravděpodobně expiroval.</value>
+  </data>
 </root>

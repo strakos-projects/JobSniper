@@ -96,6 +96,16 @@
             </Grid>
             <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="10">
                 <DataGrid Name="DataGridJobs" AutoGenerateColumns="False" IsReadOnly="True" Background="White" RowBackground="#F8F9FA" AlternatingRowBackground="White" BorderBrush="#EEE" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEE" VerticalContentAlignment="Center">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsProbablyInactive}" Value="True">
+                                    <Setter Property="Opacity" Value="0.5"/>
+                                    <Setter Property="ToolTip" Value="{x:Static p:Resources.Tooltip_JobInactive}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Position}" Binding="{Binding Title}" Width="*" />
                         <DataGridTextColumn Header="Zdroj" Binding="{Binding PortalName}" Width="120">

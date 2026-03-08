@@ -112,4 +112,7 @@
   <data name="Grid_Potential" xml:space="preserve"><value>Potential</value></data>
 <data name="Msg_CompanyExistsTitle" xml:space="preserve"><value>Company already exists</value></data>
   <data name="Msg_CompanyExistsText" xml:space="preserve"><value>Company '{0}' cannot be added because it already exists in the CRM under the name '{1}'.</value></data>
+  <data name="Tooltip_JobInactive" xml:space="preserve">
+    <value>This job offer has not been detected on the portals for a while. It has probably expired.</value>
+  </data>
 </root>
