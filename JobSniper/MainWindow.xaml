@@ -153,9 +153,34 @@
                                         <Button Content="{x:Static p:Resources.Btn_Web}" Tag="{Binding Url}" Click="BtnOpenWeb_Click" Margin="0,0,5,0" Padding="8,3" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
 
                                         <Button Content="📝" ToolTip="{x:Static p:Resources.Tooltip_Crm}" Tag="{Binding}" Click="BtnCrm_Click" Margin="0,0,5,0" Padding="8,3" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                                        <Button Content="👍" ToolTip="{x:Static p:Resources.Tooltip_Opportunity}" Tag="{Binding}" Click="BtnZajimave_Click" Margin="0,0,5,0" Padding="8,3" Background="#2ECC71" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                                        <Button Content="👎" ToolTip="{x:Static p:Resources.Tooltip_Trash}" Tag="{Binding}" Click="BtnSkryt_Click" Margin="0,0,5,0" Padding="8,3" Background="#95A5A6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                                        <Button Content="👍" ToolTip="{x:Static p:Resources.Tooltip_Opportunity}" Tag="{Binding}" Click="BtnZajimave_Click" Margin="0,0,5,0" Padding="8,3" Background="#2ECC71" Foreground="White" BorderThickness="0" Cursor="Hand">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="1">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
 
+                                        <Button Content="👎" ToolTip="{x:Static p:Resources.Tooltip_Trash}" Tag="{Binding}" Click="BtnSkryt_Click" Margin="0,0,5,0" Padding="8,3" Background="#95A5A6" Foreground="White" BorderThickness="0" Cursor="Hand">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="2">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="3">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                         <Button Content="⛔" ToolTip="{x:Static p:Resources.Tooltip_Block}" Tag="{Binding}" Click="BtnBlokovatFirmu_Click" Margin="0,0,5,0" Padding="8,3" Background="#E74C3C" Foreground="White" BorderThickness="0" Cursor="Hand">
                                             <Button.Style>
                                                 <Style TargetType="Button">
