@@ -18,6 +18,9 @@ namespace JobSniper
 {
     public partial class MainWindow : Window
     {
+        private System.Windows.Threading.DispatcherTimer _searchTimer;
+
+
         private int? _currentFilterStatus = null;
         private bool _isShowingDuplicates = false;
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
@@ -40,6 +43,11 @@ namespace JobSniper
         public MainWindow()
         {
             InitializeComponent();
+
+            _searchTimer = new System.Windows.Threading.DispatcherTimer();
+            _searchTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _searchTimer.Tick += SearchTimer_Tick;
+
             var scraperTypes = Assembly.GetExecutingAssembly().GetTypes()
                 .Where(t => typeof(IScraper).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
             foreach (var type in scraperTypes)
@@ -55,6 +63,15 @@ namespace JobSniper
 
             // PŘIDÁNO: Načítání spustíme až ve chvíli, kdy už je okno fyzicky vidět na obrazovce
             this.Loaded += MainWindow_Loaded;
+        }
+        private void SearchTimer_Tick(object sender, EventArgs e)
+        {
+            _searchTimer.Stop();
+
+            if (DataGridJobs?.ItemsSource != null)
+            {
+                CollectionViewSource.GetDefaultView(DataGridJobs.ItemsSource).Refresh();
+            }
         }
         // 1. Zajišťuje, že Cache je neustále aktuální
         private void RefreshCrmCache()
@@ -319,10 +336,12 @@ namespace JobSniper
         
         private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (DataGridJobs?.ItemsSource != null)
-            {
-                CollectionViewSource.GetDefaultView(DataGridJobs.ItemsSource).Refresh();
-            }
+            //if (DataGridJobs?.ItemsSource != null)
+            //{
+            //    CollectionViewSource.GetDefaultView(DataGridJobs.ItemsSource).Refresh();
+            //}
+            _searchTimer?.Stop();
+            _searchTimer?.Start();
         }
 
         private void BtnDashboard_Click(object sender, RoutedEventArgs e) => ShowDashboard();
