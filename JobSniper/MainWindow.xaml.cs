@@ -33,20 +33,24 @@ namespace JobSniper
         private Dictionary<string, Type> _availableScrapers = new Dictionary<string, Type>();
         // Paměť pro rychlé hledání reputace
         private Dictionary<string, int> _companyReputationCache = new Dictionary<string, int>();
+        private readonly string dataFolder = "Data";
 
-        private readonly string urlsFilePath = "urls.json";
-        private readonly string jobsFilePath = "jobs.json";
-        private readonly string blacklistFilePath = "blacklist.json";
-        private readonly string keywordsFilePath = "keywords.json";
+        private readonly string urlsFilePath = Path.Combine("Data", "urls.json");
+        private readonly string jobsFilePath = Path.Combine("Data", "jobs.json");
+        private readonly string blacklistFilePath = Path.Combine("Data", "blacklist.json");
+        private readonly string keywordsFilePath = Path.Combine("Data", "keywords.json");
 
         private List<ScrapeUrl> savedUrls = new List<ScrapeUrl>();
         private List<string> blacklistedCompanies = new List<string>();
-        private readonly string crmFilePath = "crm_companies.json";
+        private readonly string crmFilePath = Path.Combine("Data", "crm_companies.json");
         private List<CompanyProfile> crmProfiles = new List<CompanyProfile>();
         public MainWindow()
         {
             InitializeComponent();
-
+            if (!Directory.Exists(dataFolder))
+            {
+                Directory.CreateDirectory(dataFolder);
+            }
             _searchTimer = new System.Windows.Threading.DispatcherTimer();
             _searchTimer.Interval = TimeSpan.FromMilliseconds(500);
             _searchTimer.Tick += SearchTimer_Tick;
@@ -340,7 +344,10 @@ namespace JobSniper
 
             if (TxtSearch != null) TxtSearch.Text = "";
             if (TxtCrmSearch != null) TxtCrmSearch.Text = "";
-
+            if (PanelKeywords != null)
+            {
+                PanelKeywords.Visibility = (_currentFilterStatus == 0 && !_isShowingDuplicates) ? Visibility.Visible : Visibility.Collapsed;
+            }
             ApplyFilters();
         }
 

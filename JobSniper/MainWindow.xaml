@@ -95,7 +95,7 @@
                     <TextBox x:Name="TxtSearch" Width="250" Padding="8" FontSize="14" TextChanged="TxtSearch_TextChanged" ToolTip="{x:Static p:Resources.Search_Tooltip}"/>
                 </StackPanel>
             </Grid>
-            <StackPanel Grid.Row="1" Margin="0,0,0,15">
+            <StackPanel x:Name="PanelKeywords" Grid.Row="1" Margin="0,0,0,15">
                 <ItemsControl x:Name="ItemsTrackedKeywords">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
