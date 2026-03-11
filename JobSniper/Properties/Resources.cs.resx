@@ -116,4 +116,6 @@
   <data name="Tooltip_JobInactive" xml:space="preserve">
     <value>Tento inzerát už nebyl na portálech delší dobu detekován. Pravděpodobně expiroval.</value>
   </data>
+  <data name="Grid_Added" xml:space="preserve"><value>Přidáno</value></data>
+  <data name="Badge_New" xml:space="preserve"><value>Nové!</value></data>
 </root>

@@ -115,4 +115,6 @@
   <data name="Tooltip_JobInactive" xml:space="preserve">
     <value>This job offer has not been detected on the portals for a while. It has probably expired.</value>
   </data>
+  <data name="Grid_Added" xml:space="preserve"><value>Added</value></data>
+  <data name="Badge_New" xml:space="preserve"><value>New!</value></data>
 </root>

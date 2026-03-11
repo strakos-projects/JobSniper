@@ -17,6 +17,7 @@ namespace JobSniper.Models
         public DateTime LastSeen { get; set; } = DateTime.Now;
 
         public bool IsProbablyInactive => (DateTime.Now - LastSeen).TotalDays > 2;
+        public bool IsNewOffer => (DateTime.Now - DateScraped).TotalHours <= 48;
 
         public int Status { get; set; }
         public int CrmReputation { get; set; } = 0;

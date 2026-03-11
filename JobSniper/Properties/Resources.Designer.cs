@@ -70,6 +70,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný New!.
+        /// </summary>
+        public static string Badge_New {
+            get {
+                return ResourceManager.GetString("Badge_New", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný ❌ Delete.
         /// </summary>
         public static string Btn_Delete {
@@ -291,6 +300,15 @@ namespace JobSniper.Properties {
         public static string Grid_Actions {
             get {
                 return ResourceManager.GetString("Grid_Actions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Added.
+        /// </summary>
+        public static string Grid_Added {
+            get {
+                return ResourceManager.GetString("Grid_Added", resourceCulture);
             }
         }
         

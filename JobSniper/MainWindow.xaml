@@ -154,6 +154,28 @@
 
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Location}" Binding="{Binding Location}" Width="150" />
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Seen}" Binding="{Binding LastSeen, StringFormat=\{0:dd.MM. HH:mm\}}" Width="100" />
+                        <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_Added}" Width="80" SortMemberPath="DateScraped">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{Binding DateScraped, StringFormat=\{0:dd.MM.\}}"/>
+                                                <Setter Property="Foreground" Value="#7F8C8D"/>
+
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNewOffer}" Value="True">
+                                                        <Setter Property="Text" Value="{x:Static p:Resources.Badge_New}"/>
+                                                        <Setter Property="Foreground" Value="#3498DB"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Salary}" Binding="{Binding Salary}" Width="130" />
 
                         <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_Actions}" Width="Auto">
