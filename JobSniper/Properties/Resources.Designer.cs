@@ -556,6 +556,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný New Keyword:.
+        /// </summary>
+        public static string Settings_AddKeywordLabel {
+            get {
+                return ResourceManager.GetString("Settings_AddKeywordLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Add new URL to scrape:.
         /// </summary>
         public static string Settings_AddUrlLabel {
@@ -565,11 +574,29 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Add Keyword.
+        /// </summary>
+        public static string Settings_BtnAddKeyword {
+            get {
+                return ResourceManager.GetString("Settings_BtnAddKeyword", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Add URL.
         /// </summary>
         public static string Settings_BtnAddUrl {
             get {
                 return ResourceManager.GetString("Settings_BtnAddUrl", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Tracked Keywords (Quick Filters).
+        /// </summary>
+        public static string Settings_KeywordsTitle {
+            get {
+                return ResourceManager.GetString("Settings_KeywordsTitle", resourceCulture);
             }
         }
         

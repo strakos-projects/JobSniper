@@ -118,4 +118,7 @@
   </data>
   <data name="Grid_Added" xml:space="preserve"><value>Přidáno</value></data>
   <data name="Badge_New" xml:space="preserve"><value>Nové!</value></data>
+  <data name="Settings_KeywordsTitle" xml:space="preserve"><value>Klíčová slova (Rychlé filtry v Třídičce)</value></data>
+  <data name="Settings_AddKeywordLabel" xml:space="preserve"><value>Nové klíčové slovo:</value></data>
+  <data name="Settings_BtnAddKeyword" xml:space="preserve"><value>Přidat slovo</value></data>
 </root>

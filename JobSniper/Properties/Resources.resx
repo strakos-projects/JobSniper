@@ -117,4 +117,7 @@
   </data>
   <data name="Grid_Added" xml:space="preserve"><value>Added</value></data>
   <data name="Badge_New" xml:space="preserve"><value>New!</value></data>
+  <data name="Settings_KeywordsTitle" xml:space="preserve"><value>Tracked Keywords (Quick Filters)</value></data>
+  <data name="Settings_AddKeywordLabel" xml:space="preserve"><value>New Keyword:</value></data>
+  <data name="Settings_BtnAddKeyword" xml:space="preserve"><value>Add Keyword</value></data>
 </root>

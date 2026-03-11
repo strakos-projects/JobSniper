@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
 	  <ApplicationIcon>sniper1.ico</ApplicationIcon>
-	  <Version>1.6.3</Version>
-	  <AssemblyVersion>1.6.3</AssemblyVersion>
-	  <FileVersion>1.6.3</FileVersion>
+	  <Version>1.7.0</Version>
+	  <AssemblyVersion>1.7.0</AssemblyVersion>
+	  <FileVersion>1.7.0</FileVersion>
   </PropertyGroup>
 
 

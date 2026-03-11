@@ -26,7 +26,9 @@ namespace JobSniper
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<JobOffer> SessionDuplicates { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<CompanyProfile> CrmProfiles { get; set; } = new ObservableCollection<CompanyProfile>();
+        public ObservableCollection<TrackedWord> TrackedKeywords { get; set; } = new ObservableCollection<TrackedWord>();
 
+        private List<string> _myKeywords = new List<string>();
 
         private Dictionary<string, Type> _availableScrapers = new Dictionary<string, Type>();
         // Paměť pro rychlé hledání reputace
@@ -35,6 +37,7 @@ namespace JobSniper
         private readonly string urlsFilePath = "urls.json";
         private readonly string jobsFilePath = "jobs.json";
         private readonly string blacklistFilePath = "blacklist.json";
+        private readonly string keywordsFilePath = "keywords.json";
 
         private List<ScrapeUrl> savedUrls = new List<ScrapeUrl>();
         private List<string> blacklistedCompanies = new List<string>();
@@ -64,6 +67,48 @@ namespace JobSniper
             // PŘIDÁNO: Načítání spustíme až ve chvíli, kdy už je okno fyzicky vidět na obrazovce
             this.Loaded += MainWindow_Loaded;
         }
+        private void BtnAddKeyword_Click(object sender, RoutedEventArgs e)
+        {
+            string word = TxtNewKeyword.Text?.Trim().ToLower(); // Vše ukládáme jako malá písmena
+
+            if (!string.IsNullOrEmpty(word) && !_myKeywords.Contains(word))
+            {
+                _myKeywords.Add(word);
+                SaveKeywords();
+                RefreshKeywordList();
+                UpdateKeywordChips(); // Okamžitě se to projeví i na štítcích v Třídičce
+                TxtNewKeyword.Text = "";
+            }
+        }
+
+        private void BtnDeleteKeyword_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string keyword)
+            {
+                _myKeywords.Remove(keyword);
+                SaveKeywords();
+                RefreshKeywordList();
+                UpdateKeywordChips(); // Okamžitě odstraní štítek i z Třídičky
+            }
+        }
+        private void LoadKeywords()
+        {
+            if (File.Exists(keywordsFilePath))
+            {
+                _myKeywords = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(keywordsFilePath)) ?? new List<string>();
+            }
+            else
+            {
+                // Pokud soubor neexistuje, vytvoří se defaultní sada
+                _myKeywords = new List<string> { "php", "senior" };
+                SaveKeywords();
+            }
+            RefreshKeywordList();
+        }
+
+        private void SaveKeywords() => File.WriteAllText(keywordsFilePath, JsonSerializer.Serialize(_myKeywords, new JsonSerializerOptions { WriteIndented = true }));
+
+        private void RefreshKeywordList() { LstKeywords.ItemsSource = null; LstKeywords.ItemsSource = _myKeywords; }
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             _searchTimer.Stop();
@@ -170,6 +215,7 @@ namespace JobSniper
             DatabaseOfJobs = new ObservableCollection<JobOffer>(tempJobs);
 
             RefreshUrlList();
+            LoadKeywords();
             DataGridJobs.ItemsSource = DatabaseOfJobs;
 
             UpdateDashboardCounters();
@@ -180,6 +226,7 @@ namespace JobSniper
             LogToConsole("Systém připraven a data načtena...");
 
             _ = StartScrapingEngineAsync();
+            UpdateKeywordChips();
         }
         private string RemoveDiacritics(string text)
         {
@@ -347,7 +394,11 @@ namespace JobSniper
         private void BtnDashboard_Click(object sender, RoutedEventArgs e) => ShowDashboard();
         private void ShowDashboard() => SetView(GridDashboard, BtnDashboard);
 
-        private void BtnTridicka_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnTridicka, "📥 Inbox", 0);
+        private void BtnTridicka_Click(object sender, RoutedEventArgs e)
+        {
+            SetView(GridTridicka, BtnTridicka, "📥 Inbox", 0);
+            UpdateKeywordChips();
+        }
         private void BtnPrilezitosti_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnPrilezitosti, "⭐ Opportunities", 1);
         private void BtnKos_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnKos, "🗑️ Filtered to Trash", 2);
         private void BtnDuplicity_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnDuplicity, "🔁 Session Duplicates", null, true);
@@ -424,7 +475,8 @@ namespace JobSniper
                     }
                     UpdateDashboardCounters();
                     SaveJobs();
-
+                    UpdateKeywordChips();
+                    // Dispatcher.Invoke(() => UpdateKeywordChips());
                     if (addedCount > 0 || dupCount > 0)
                         LogToConsole($"[System] Saved {addedCount} new offers. Ignored {dupCount} duplicates.");
                 });
@@ -570,6 +622,7 @@ namespace JobSniper
                 SaveJobs();
                 CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 UpdateDashboardCounters();
+                UpdateKeywordChips();
             }
         }
         private void BtnBlokovatFirmu_Click(object sender, RoutedEventArgs e)
@@ -651,6 +704,7 @@ namespace JobSniper
                 SaveJobs();
                 UpdateDashboardCounters();
                 CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+
                 DataGridJobs.Items.Refresh();
             }
         }
@@ -957,6 +1011,37 @@ namespace JobSniper
                 view.Refresh();
             }
         }
-    }
+        private void BtnKeywordChip_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string keyword)
+            {
+                TxtSearch.Text = keyword;
+            }
+        }
+        private void UpdateKeywordChips()
+        {
+            TrackedKeywords.Clear();
+            var inboxJobs = DatabaseOfJobs.Where(j => j.Status == 0).ToList();
 
+            foreach (var kw in _myKeywords)
+            {
+                int count = inboxJobs.Count(j =>
+                    (j.Title != null && j.Title.ToLower().Contains(kw.ToLower())) ||
+                    (j.Company != null && j.Company.ToLower().Contains(kw.ToLower()))
+                );
+                if (count > 0)
+                {
+                    TrackedKeywords.Add(new TrackedWord { Keyword = kw, Count = count });
+                }
+            }
+
+            ItemsTrackedKeywords.ItemsSource = TrackedKeywords;
+        }
+    }
+    public class TrackedWord
+    {
+        public string Keyword { get; set; }
+        public int Count { get; set; }
+        public string DisplayText => $"{Keyword} ({Count})";
+    }
 }
