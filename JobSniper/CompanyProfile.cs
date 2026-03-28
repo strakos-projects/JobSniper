@@ -14,8 +14,8 @@ namespace JobSniper
         public string PrimaryName => (Aliases != null && Aliases.Count > 0) ? Aliases[0] : "Neznámá firma";
 
         public List<string> Aliases { get; set; } = new List<string>();
+        public string CrmId { get; set; }
 
-        
         public int Reputation { get; set; }
         public int Potential { get; set; } = 0;
         public string InteractionHistory { get; set; } 

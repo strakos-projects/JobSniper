@@ -9,6 +9,7 @@ namespace JobSniper.Models
     public class JobOffer
     {
         public int Id { get; set; }
+        public string CrmCompanyId { get; set; }
         public string ExternalId { get; set; }
         public string Title { get; set; }
         public string Company { get; set; }

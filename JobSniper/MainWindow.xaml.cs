@@ -20,7 +20,6 @@ namespace JobSniper
     {
         private System.Windows.Threading.DispatcherTimer _searchTimer;
 
-
         private int? _currentFilterStatus = null;
         private bool _isShowingDuplicates = false;
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
@@ -33,6 +32,7 @@ namespace JobSniper
         private Dictionary<string, Type> _availableScrapers = new Dictionary<string, Type>();
         // Paměť pro rychlé hledání reputace
         private Dictionary<string, int> _companyReputationCache = new Dictionary<string, int>();
+        private Dictionary<string, string> _companyIdCache = new Dictionary<string, string>();
         private readonly string dataFolder = "Data";
 
         private readonly string urlsFilePath = Path.Combine("Data", "urls.json");
@@ -139,26 +139,25 @@ namespace JobSniper
             }
         }
 
-        // 2. Bleskové načítání na pozadí, které nezamrazí okno
-        // 2. Bleskové načítání na pozadí, které nezamrazí okno
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             GridDashboard.IsEnabled = false; // Zakážeme na vteřinu klikání
             LogToConsole("Začínám načítat databázi na pozadí...");
 
-            // Třída Progress automaticky zajistí bezpečný přepis textu v UI vlákně z vlákna na pozadí
             var progress = new Progress<string>(status =>
             {
                 Title = $"JobSniper - {status}";
             });
 
-            // Dočasné lokální seznamy (aby UI vlákno nebylo rušeno)
             var tempUrls = new List<ScrapeUrl>();
             var tempBlacklist = new List<string>();
             var tempCrm = new List<CompanyProfile>();
             var tempJobs = new List<JobOffer>();
 
-            // VŠECHNA PRÁCE SE TEĎ DĚJE NA POZADÍ (UI je plně responzivní)
+            // VLAJKY PRO ULOŽENÍ
+            bool needsCrmSave = false;
+            bool needsJobsSave = false;
+
             await Task.Run(() =>
             {
                 var p = (IProgress<string>)progress;
@@ -172,15 +171,38 @@ namespace JobSniper
 
                 p.Report("Optimalizuji paměť...");
                 _companyReputationCache.Clear();
+                _companyIdCache.Clear(); // Přidáno čištění ID cache
+
                 foreach (var profile in tempCrm)
                 {
+                    if (profile == null) continue; // Ochrana proti null profilu
+
+                    if (string.IsNullOrEmpty(profile.CrmId))
+                    {
+                        profile.CrmId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                        needsCrmSave = true; // Znamenáme si, že jsme upravili CRM
+                    }
+
+                    if (profile.Aliases == null) continue; // Ochrana proti null aliasům z JSONu
+
                     foreach (var alias in profile.Aliases)
                     {
+                        if (string.IsNullOrWhiteSpace(alias)) continue;
+
                         string normAlias = NormalizeCompanyName(alias);
-                        if (!string.IsNullOrEmpty(normAlias) && !_companyReputationCache.ContainsKey(normAlias))
-                            _companyReputationCache[normAlias] = profile.Reputation;
+                        if (!string.IsNullOrEmpty(normAlias))
+                        {
+                            if (!_companyReputationCache.ContainsKey(normAlias))
+                                _companyReputationCache[normAlias] = profile.Reputation;
+
+                            // ZDE PLNÍME NOVOU CACHE PRO BLESKOVÉ HLEDÁNÍ ID
+                            if (!_companyIdCache.ContainsKey(normAlias))
+                                _companyIdCache[normAlias] = profile.CrmId;
+                        }
                     }
                 }
+
+                var profilesById = tempCrm.ToDictionary(p => p.CrmId, p => p);
 
                 if (File.Exists(jobsFilePath))
                 {
@@ -192,31 +214,77 @@ namespace JobSniper
 
                     foreach (var j in tempJobs)
                     {
+                        if (j == null) continue; // Ochrana proti poškozenému JSONu inzerátu
+
                         current++;
-                        // Abychom nezahltili UI vykreslováním, hlásíme progres jen každých 50 inzerátů nebo na konci
-                        if (current % 50 == 0 || current == total)
+
+                        // 1. Blesková cesta (včetně zachycení "NONE")
+                        if (j.CrmCompanyId != null)
                         {
-                            p.Report($"Zpracovávám inzeráty: {current} z {total}");
+                            if (j.CrmCompanyId == "NONE")
+                            {
+                                j.CrmReputation = 0; // Již jsme v minulosti zjistili, že profil nemá
+                            }
+                            else if (profilesById.TryGetValue(j.CrmCompanyId, out var linkedProfile))
+                            {
+                                j.CrmReputation = linkedProfile.Reputation;
+                            }
+                            else
+                            {
+                                // Pokud má ID, ale profil v CRM už není (např. byl smazán ručně v JSONu)
+                                j.CrmCompanyId = "NONE";
+                                j.CrmReputation = 0;
+                                needsJobsSave = true;
+                            }
+
+                            if (current % 50 == 0 || current == total)
+                                p.Report($"Zpracovávám inzeráty (rychle): {current} z {total}");
+
+                            continue;
                         }
 
+                        // Kód dojde sem pouze pokud je CrmCompanyId null (neanalyzováno)
+                        if (current % 50 == 0 || current == total)
+                            p.Report($"Zpracovávám inzeráty (analyzuji): {current} z {total}");
+
+                        needsJobsSave = true;
+
                         string normCompany = NormalizeCompanyName(j.Company);
-                        // Bleskové přiřazení z Cache
-                        if (_companyReputationCache.TryGetValue(normCompany, out int rep))
-                            j.CrmReputation = rep;
+
+                        if (!string.IsNullOrEmpty(normCompany) && _companyIdCache.TryGetValue(normCompany, out string cachedCrmId) && profilesById.TryGetValue(cachedCrmId, out var profileFromCache))
+                        {
+                            j.CrmCompanyId = profileFromCache.CrmId;
+                            j.CrmReputation = profileFromCache.Reputation;
+                        }
                         else
                         {
-                            var profile = tempCrm.FirstOrDefault(pr => pr.Aliases.Any(a => IsCompanyMatch(a, j.Company)));
-                            j.CrmReputation = profile != null ? profile.Reputation : 0;
+                            // Plné skenování s kontrolou null hodnot
+                            var matchedProfile = tempCrm.FirstOrDefault(pr => pr?.Aliases != null && pr.Aliases.Any(a => IsCompanyMatch(a, j.Company)));
+                            if (matchedProfile != null)
+                            {
+                                j.CrmCompanyId = matchedProfile.CrmId;
+                                j.CrmReputation = matchedProfile.Reputation;
+                            }
+                            else
+                            {
+                                // >>> OPRAVA: ZDE JE ZÁSAH - označní inzerátu, že nemá CRM profil
+                                j.CrmCompanyId = "NONE";
+                                j.CrmReputation = 0;
+                            }
                         }
                     }
                 }
             });
 
-            // 3. Po dokončení bezpečně nahrajeme data zpět do UI
             savedUrls = tempUrls;
             blacklistedCompanies = tempBlacklist;
+
             CrmProfiles = new ObservableCollection<CompanyProfile>(tempCrm);
             DatabaseOfJobs = new ObservableCollection<JobOffer>(tempJobs);
+
+            // KONEČNĚ UKLÁDÁME ZMĚNY NA DISK
+            if (needsCrmSave) SaveCrm();
+            if (needsJobsSave) SaveJobs();
 
             RefreshUrlList();
             LoadKeywords();
@@ -224,7 +292,6 @@ namespace JobSniper
 
             UpdateDashboardCounters();
 
-            // Vrátíme UI do normálu
             GridDashboard.IsEnabled = true;
             Title = "JobSniper - Můj kariérní zen";
             LogToConsole("Systém připraven a data načtena...");
@@ -316,7 +383,7 @@ namespace JobSniper
                 BtnArchiv.Content = string.Format(Properties.Resources.Menu_Archive_Format, archive);
         }
 
-   
+
         private void SetView(Grid visibleGrid, Button activeButton, string title = "", int? filterStatus = null, bool showDuplicates = false)
         {
             GridDashboard.Visibility = Visibility.Collapsed;
@@ -351,7 +418,7 @@ namespace JobSniper
             ApplyFilters();
         }
 
-        
+
         private void ApplyFilters()
         {
             var targetCollection = _isShowingDuplicates ? SessionDuplicates : DatabaseOfJobs;
@@ -363,7 +430,7 @@ namespace JobSniper
                 var job = item as JobOffer;
                 if (job == null) return false;
 
-        
+
                 bool statusMatch = true;
                 if (!_isShowingDuplicates && _currentFilterStatus.HasValue)
                 {
@@ -372,7 +439,7 @@ namespace JobSniper
                 }
                 if (!statusMatch) return false;
 
-        
+
                 string query = TxtSearch.Text?.ToLower().Trim();
                 if (!string.IsNullOrEmpty(query))
                 {
@@ -387,13 +454,9 @@ namespace JobSniper
             view.Refresh();
         }
 
-        
+
         private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            //if (DataGridJobs?.ItemsSource != null)
-            //{
-            //    CollectionViewSource.GetDefaultView(DataGridJobs.ItemsSource).Refresh();
-            //}
             _searchTimer?.Stop();
             _searchTimer?.Start();
         }
@@ -411,24 +474,50 @@ namespace JobSniper
         private void BtnDuplicity_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnDuplicity, "🔁 Session Duplicates", null, true);
         private void BtnSettings_Click(object sender, RoutedEventArgs e) => SetView(GridSettings, BtnSettings);
 
+        // >>> OPRAVA: Metoda pro přiřazení ID k úplně novým inzerátům ze scraperu
+        private void AssignCrmData(JobOffer job)
+        {
+            if (string.IsNullOrWhiteSpace(job.Company))
+            {
+                job.CrmCompanyId = "NONE";
+                job.CrmReputation = 0;
+                return;
+            }
+
+            string normCompany = NormalizeCompanyName(job.Company);
+
+            if (_companyIdCache.TryGetValue(normCompany, out string cachedCrmId))
+            {
+                job.CrmCompanyId = cachedCrmId;
+                job.CrmReputation = _companyReputationCache.TryGetValue(normCompany, out int rep) ? rep : 0;
+                return;
+            }
+
+            var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, job.Company)));
+            if (profile != null)
+            {
+                job.CrmCompanyId = profile.CrmId;
+                job.CrmReputation = profile.Reputation;
+            }
+            else
+            {
+                job.CrmCompanyId = "NONE";
+                job.CrmReputation = 0;
+            }
+        }
+
         private async Task StartScrapingEngineAsync()
         {
             LogToConsole("Starting scraper engine...");
-           // var scraper = new ExampleScraper();
 
             foreach (var url in savedUrls)
             {
                 if (!url.IsActive) continue;
-                /*IScraper scraper = url.PortalName switch
-                {
-                    "ExampleScraper (Demo)" => new ExampleScraper(),
-                    "Jobs.cz (Ostrý)" => new JobsCzScraper(),
-                    _ => new ExampleScraper() // Výchozí pojistka pro staré adresy z předchozí verze
-                };*/
+
                 IScraper scraper;
                 if (_availableScrapers.ContainsKey(url.PortalName))
                 {
-                 
+
                     scraper = (IScraper)Activator.CreateInstance(_availableScrapers[url.PortalName]);
                 }
                 else
@@ -465,17 +554,22 @@ namespace JobSniper
                                 existingJob.Status = 0;
                             }
                             job.Url = cleanUrl;
-                            job.CrmReputation = GetCompanyReputation(job.Company);
+
+                            // >>> OPRAVA: Místo GetCompanyReputation voláme novou AssignCrmData
+                            AssignCrmData(job);
+
                             SessionDuplicates.Add(job);
                             dupCount++;
                         }
                         else
                         {
                             job.Url = cleanUrl;
-                            //if (blacklistedCompanies.Contains(job.Company)) job.Status = 3;
                             if (IsCompanyBlacklisted(job.Company))
                                 job.Status = 3;
-                            job.CrmReputation = GetCompanyReputation(job.Company);
+
+                            // >>> OPRAVA: Místo GetCompanyReputation voláme novou AssignCrmData    
+                            AssignCrmData(job);
+
                             DatabaseOfJobs.Add(job);
                             addedCount++;
                         }
@@ -483,7 +577,7 @@ namespace JobSniper
                     UpdateDashboardCounters();
                     SaveJobs();
                     UpdateKeywordChips();
-                    // Dispatcher.Invoke(() => UpdateKeywordChips());
+
                     if (addedCount > 0 || dupCount > 0)
                         LogToConsole($"[System] Saved {addedCount} new offers. Ignored {dupCount} duplicates.");
                 });
@@ -530,7 +624,6 @@ namespace JobSniper
                 }
 
                 var profile = CrmProfiles.FirstOrDefault(p =>
-                    //p.Aliases.Any(a => string.Equals(a, job.Company, StringComparison.OrdinalIgnoreCase))
                     p.Aliases.Any(a => IsCompanyMatch(a, job.Company))
                 );
 
@@ -540,11 +633,13 @@ namespace JobSniper
                 {
                     profile = new CompanyProfile();
                     profile.Aliases.Add(job.Company);
+                    // >>> OPRAVA: Nová firma musí dostat ID hned při založení
+                    profile.CrmId = Guid.NewGuid().ToString("N").Substring(0, 8);
                     isNewProfile = true;
                 }
 
-                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a) /*string.Equals(b, a, StringComparison.OrdinalIgnoreCase)*/)) ||
-                                     blacklistedCompanies.Any(b => IsCompanyMatch(b, job.Company)/*tring.Equals(b, job.Company, StringComparison.OrdinalIgnoreCase)*/);
+                bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a))) ||
+                                     blacklistedCompanies.Any(b => IsCompanyMatch(b, job.Company));
 
                 var crmWindow = new CrmWindow(profile, job.Company, isBlacklisted) { Owner = this };
 
@@ -561,9 +656,9 @@ namespace JobSniper
                     int affectedCount = 0;
                     foreach (var j in DatabaseOfJobs)
                     {
-                        if (profile.Aliases.Any(a => /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/ IsCompanyMatch(a, j.Company)) ||
-                            IsCompanyMatch(j.Company, job.Company)/*string.Equals(j.Company, job.Company, StringComparison.OrdinalIgnoreCase)*/)
+                        if (profile.Aliases.Any(a => IsCompanyMatch(a, j.Company)) || IsCompanyMatch(j.Company, job.Company))
                         {
+                            j.CrmCompanyId = profile.CrmId; // >>> OPRAVA: Zajištění správného propojení
                             j.CrmReputation = profile.Reputation;
                             affectedCount++;
                         }
@@ -640,10 +735,8 @@ namespace JobSniper
 
                 string company = clickedJob.Company;
 
-                // 1. Zkusíme najít firmu v CRM, abychom získali všechny její aliasy
                 var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, company)));
 
-                // 2. Vytvoříme seznam všech názvů k blokování (všechny aliasy z CRM, nebo jen přesný název z inzerátu)
                 List<string> namesToBlock = profile != null ? profile.Aliases.ToList() : new List<string> { company };
 
                 bool blacklistChanged = false;
@@ -658,7 +751,6 @@ namespace JobSniper
 
                 if (blacklistChanged) SaveBlacklist();
 
-                // 3. Projdeme všechny inzeráty a skryjeme ty, které odpovídají jakémukoliv aliasu z profilu
                 int affected = 0;
                 foreach (var job in DatabaseOfJobs)
                 {
@@ -683,7 +775,6 @@ namespace JobSniper
             {
                 string company = selectedJob.Company;
 
-                // Najdeme profil v CRM pro všechny jeho aliasy
                 var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, company)));
                 List<string> namesToUnblock = profile != null ? profile.Aliases.ToList() : new List<string> { company };
 
@@ -699,7 +790,6 @@ namespace JobSniper
                 int restored = 0;
                 foreach (var job in DatabaseOfJobs.Where(j => j.Status == 3))
                 {
-                    // OPRAVA: Tady musí být 'job.Company', nikoliv 'j.Company'
                     if (namesToUnblock.Any(name => IsCompanyMatch(name, job.Company)))
                     {
                         restored++;
@@ -721,7 +811,6 @@ namespace JobSniper
             {
                 var loaded = JsonSerializer.Deserialize<List<CompanyProfile>>(File.ReadAllText(crmFilePath)) ?? new List<CompanyProfile>();
                 CrmProfiles = new ObservableCollection<CompanyProfile>(loaded);
-                // ZRYCHLENÍ: Předpočítáme si normalizované aliasy a jejich reputaci
                 _companyReputationCache.Clear();
                 foreach (var profile in CrmProfiles)
                 {
@@ -738,20 +827,18 @@ namespace JobSniper
         }
         private void SaveCrm() => File.WriteAllText(crmFilePath, JsonSerializer.Serialize(CrmProfiles, new JsonSerializerOptions { WriteIndented = true }));
 
-        // Pomocná funkce, která zjistí barvu firmy z CRM (hledá i v Aliasech)
+        // Tato funkce už je sice nahrazena AssignCrmData, ale nechávám ji pro případ zpětné kompatibility
         private int GetCompanyReputation(string companyName)
         {
             if (string.IsNullOrWhiteSpace(companyName)) return 0;
 
             string normCompany = NormalizeCompanyName(companyName);
 
-            // 1. Zkusíme bleskové hledání v naší předpočítané paměti (přesná shoda očištěného názvu)
             if (_companyReputationCache.TryGetValue(normCompany, out int rep))
             {
                 return rep;
             }
             var profile = CrmProfiles.FirstOrDefault(p =>
-                // p.Aliases.Any(a => string.Equals(a, companyName, StringComparison.OrdinalIgnoreCase))
                 p.Aliases.Any(a => IsCompanyMatch(a, companyName))
 
             );
@@ -766,9 +853,7 @@ namespace JobSniper
                 var tempJobs = new List<JobOffer>();
                 foreach (var j in loaded)
                 {
-                    // Přidáno: zkontrolujeme aktuální reputaci v CRM
-                    j.CrmReputation = GetCompanyReputation(j.Company);
-                    // DatabaseOfJobs.Add(j);
+                    AssignCrmData(j); // Nahrazeno staré volání GetCompanyReputation
                     tempJobs.Add(j);
                 }
                 DatabaseOfJobs = new ObservableCollection<JobOffer>(tempJobs);
@@ -840,7 +925,6 @@ namespace JobSniper
                 {
                     string normNewAlias = NormalizeCompanyName(newAlias);
 
-                    // ... a zkusíme je najít v existujících CRM profilech
                     var existingProfile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => NormalizeCompanyName(a) == normNewAlias));
 
                     if (existingProfile != null)
@@ -855,13 +939,17 @@ namespace JobSniper
                     }
                 }
 
+                // >>> OPRAVA: Vygeneruje ID pro nově přidávanou firmu ručně z UI
+                newProfile.CrmId = Guid.NewGuid().ToString("N").Substring(0, 8);
                 CrmProfiles.Add(newProfile);
                 SaveCrm();
                 RefreshCrmCache();
 
-                // Přepočítá barvy u inzerátů, kdyby od ní už v Třídičce nějaký byl
-                foreach (var job in DatabaseOfJobs.Where(j => newProfile.Aliases.Any(a => IsCompanyMatch(a, j.Company)/*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
+                foreach (var job in DatabaseOfJobs.Where(j => newProfile.Aliases.Any(a => IsCompanyMatch(a, j.Company))))
+                {
+                    job.CrmCompanyId = newProfile.CrmId; // >>> OPRAVA: Propojí existující inzeráty na nové ID
                     job.CrmReputation = newProfile.Reputation;
+                }
 
                 CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                 SaveJobs();
@@ -874,8 +962,6 @@ namespace JobSniper
         {
             if (sender is Button btn && btn.Tag is CompanyProfile profile)
             {
-                //bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a)/* string.Equals(b, a, StringComparison.OrdinalIgnoreCase)*/));
-
                 bool isBlacklisted = profile.Aliases.Any(a => IsCompanyBlacklisted(a));
                 var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted) { Owner = this };
                 if (crmWindow.ShowDialog() == true)
@@ -884,9 +970,12 @@ namespace JobSniper
                     RefreshCrmCache();
                     CollectionViewSource.GetDefaultView(CrmProfiles).Refresh(); // Aktualizuje tabulku CRM
 
-                    
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company)/* string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
+
+                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company))))
+                    {
+                        job.CrmCompanyId = profile.CrmId; // >>> OPRAVA: Fixne chybějící vazbu při editaci
                         job.CrmReputation = profile.Reputation;
+                    }
 
                     CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                     SaveJobs();
@@ -903,7 +992,6 @@ namespace JobSniper
                     blacklistedCompanies.Add(profile.PrimaryName);
                     SaveBlacklist();
 
-                    // Změna statusu u všech inzerátů
                     foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company))))
                     {
                         job.Status = 3;
@@ -950,16 +1038,15 @@ namespace JobSniper
         // Tlačítko: Smazat URL z Nastavení
         private void BtnDeleteUrl_Click(object sender, RoutedEventArgs e)
         {
-            // Získáme konkrétní URL objekt z Tagu tlačítka
             if (sender is Button btn && btn.Tag is ScrapeUrl urlItem)
             {
                 var result = MessageBox.Show($"Opravdu chcete odebrat sledování této URL?\n{urlItem.Url}", "Odebrat URL", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    savedUrls.Remove(urlItem); // Odstraníme ze seznamu
-                    SaveUrls();                // Uložíme změny do urls.json
-                    RefreshUrlList();          // Obnovíme zobrazení v ListBoxu
+                    savedUrls.Remove(urlItem);
+                    SaveUrls();
+                    RefreshUrlList();
                 }
             }
         }
@@ -976,9 +1063,12 @@ namespace JobSniper
                     SaveCrm();
                     RefreshCrmCache();
 
-                    // Inzerátům této firmy resetuje barvu na výchozí
-                    foreach (var job in DatabaseOfJobs.Where(j => profile.Aliases.Any(a => IsCompanyMatch(a, j.Company) /*string.Equals(a, j.Company, StringComparison.OrdinalIgnoreCase)*/)))
+                    // >>> OPRAVA: Inzerátům smazané firmy resetujeme CrmCompanyId na NONE
+                    foreach (var job in DatabaseOfJobs.Where(j => j.CrmCompanyId == profile.CrmId))
+                    {
+                        job.CrmCompanyId = "NONE";
                         job.CrmReputation = 0;
+                    }
 
                     CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                     SaveJobs();
@@ -1003,13 +1093,8 @@ namespace JobSniper
                         var profile = item as CompanyProfile;
                         if (profile == null) return false;
 
-                        // Hledáme v primárním názvu
                         bool matchName = profile.PrimaryName != null && profile.PrimaryName.ToLower().Contains(query);
-
-                        // Hledáme ve všech aliasech
                         bool matchAliases = profile.Aliases != null && profile.Aliases.Any(a => a.ToLower().Contains(query));
-
-                        // Hledáme v historii interakcí (zde jsou např. ta telefonní čísla)
                         bool matchHistory = profile.InteractionHistory != null && profile.InteractionHistory.ToLower().Contains(query);
 
                         return matchName || matchAliases || matchHistory;
