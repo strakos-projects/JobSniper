@@ -172,8 +172,15 @@ namespace JobSniper
                 });
             };
 
-            _browserBridge.Start();
-            LogToConsole("[System] Communication bridge for web extension is listening...");
+            try
+            {
+                _browserBridge.Start();
+                LogToConsole($"[System] Communication bridge for web extension is listening on port {_browserBridge._port}...");
+            }
+            catch (Exception ex)
+            {
+                LogToConsole($"[SERVER ERROR] Cannot start listening! Reason: {ex.Message}");
+            }
             // ------------------------------------------------
             GridDashboard.IsEnabled = false; // Zakážeme na vteřinu klikání
             LogToConsole("Začínám načítat databázi na pozadí...");

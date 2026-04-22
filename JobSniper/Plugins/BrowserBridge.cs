@@ -20,11 +20,11 @@ namespace JobSniper.Plugins
     {
         private HttpListener _listener;
         private bool _isRunning = false;
-        private readonly int _port;
+        public readonly int _port;
 
         public event EventHandler<JobDataEventArgs>? OnDataReceived;
 
-        public BrowserBridge(int port = 49152)
+        public BrowserBridge(int port = 55055)
         {
             _port = port;
             _listener = new HttpListener();
@@ -100,7 +100,7 @@ namespace JobSniper.Plugins
             {
                 try
                 {
-                    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+                    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding ?? Encoding.UTF8))
                     {
                         string json = reader.ReadToEnd();
 
