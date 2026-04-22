@@ -1,4 +1,5 @@
 ﻿using JobSniper.Models;
+using JobSniper.Plugins;
 using JobSniper.Scrapers;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -19,7 +20,8 @@ namespace JobSniper
     public partial class MainWindow : Window
     {
         private System.Windows.Threading.DispatcherTimer _searchTimer;
-
+        private List<Plugins.IWebActionPlugin> _webPlugins = new List<Plugins.IWebActionPlugin>();
+        private Plugins.BrowserBridge _browserBridge;
         private int? _currentFilterStatus = null;
         private bool _isShowingDuplicates = false;
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
@@ -141,6 +143,38 @@ namespace JobSniper
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            // ---- Load Web Plugins and start the server ----
+            var pluginTypes = Assembly.GetExecutingAssembly().GetTypes()
+                .Where(t => typeof(Plugins.IWebActionPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+
+            foreach (var type in pluginTypes)
+            {
+                var plugin = (Plugins.IWebActionPlugin)Activator.CreateInstance(type);
+                if (plugin != null)
+                {
+                    _webPlugins.Add(plugin);
+                    LogToConsole($"[System] Loaded plugin for browser integration: {plugin.Name}");
+                }
+            }
+
+            _browserBridge = new Plugins.BrowserBridge();
+            _browserBridge.OnDataReceived += (s, args) =>
+            {
+                // Anything that manipulates the Clipboard or folders should run on the main thread
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    LogToConsole($"[Browser] Received data for position: {args.JobTitle} at company {args.CompanyName}");
+
+                    foreach (var plugin in _webPlugins)
+                    {
+                        plugin.Execute(args.Url, args.JobText, args.CompanyName, args.JobTitle);
+                    }
+                });
+            };
+
+            _browserBridge.Start();
+            LogToConsole("[System] Communication bridge for web extension is listening...");
+            // ------------------------------------------------
             GridDashboard.IsEnabled = false; // Zakážeme na vteřinu klikání
             LogToConsole("Začínám načítat databázi na pozadí...");
 

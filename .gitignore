@@ -8,5 +8,7 @@
 **/Private/
 urls.json
 jobs.json
+.shadow-context.local.txt
+AI_Output.txt
 blacklist.json
 crm_companies.json
