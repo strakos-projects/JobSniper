@@ -111,7 +111,17 @@ namespace JobSniper
             }
             RefreshKeywordList();
         }
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
 
+            // Korektní ukončení HTTP serveru a uvolnění portu
+            if (_browserBridge != null)
+            {
+                _browserBridge.Stop();
+                System.Diagnostics.Debug.WriteLine("[System] Browser bridge stopped.");
+            }
+        }
         private void SaveKeywords() => File.WriteAllText(keywordsFilePath, JsonSerializer.Serialize(_myKeywords, new JsonSerializerOptions { WriteIndented = true }));
 
         private void RefreshKeywordList() { LstKeywords.ItemsSource = null; LstKeywords.ItemsSource = _myKeywords; }
