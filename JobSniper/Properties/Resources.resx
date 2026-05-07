@@ -50,7 +50,24 @@
   <data name="Menu_Duplicates_Format" xml:space="preserve"><value>🔁 Session Duplicates ({0})</value></data>
   <data name="Menu_Crm" xml:space="preserve"><value>🏢 CRM (Companies)</value></data>
   <data name="Menu_Settings" xml:space="preserve"><value>⚙️ Settings &amp; Filters</value></data>
-
+	<data name="Dashboard_BtnStartScraping" xml:space="preserve">
+    <value>▶ Start Scraping</value>
+  </data>
+	<data name="Dashboard_BtnStopScraping" xml:space="preserve">
+    <value>⏹ Stop (Running...)</value>
+  </data>
+	<data name="Dashboard_BtnCancelling" xml:space="preserve">
+    <value>⏳ Cancelling...</value>
+  </data>
+	<data name="Dashboard_ChkAutoStart" xml:space="preserve">
+    <value>Automatically start on app launch</value>
+  </data>
+	<data name="Dashboard_ActiveTargetsLoading" xml:space="preserve">
+    <value>Active targets: Loading...</value>
+  </data>
+	<data name="Dashboard_ActiveTargetsFormat" xml:space="preserve">
+    <value>Active URLs: {0} out of {1}. (Manage in Settings)</value>
+  </data>
   <data name="Dashboard_Title" xml:space="preserve"><value>Dashboard / Overview</value></data>
   <data name="Dashboard_WaitingInbox" xml:space="preserve"><value>Waiting in Inbox</value></data>
   <data name="Dashboard_MyOpportunities" xml:space="preserve"><value>My Opportunities</value></data>

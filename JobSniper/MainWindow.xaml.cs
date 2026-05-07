@@ -46,6 +46,10 @@ namespace JobSniper
         private List<string> blacklistedCompanies = new List<string>();
         private readonly string crmFilePath = Path.Combine("Data", "crm_companies.json");
         private List<CompanyProfile> crmProfiles = new List<CompanyProfile>();
+        private enum EngineState { Idle, Running, Cancelling }
+        private EngineState _engineState = EngineState.Idle;
+        private CancellationTokenSource _scraperCts;
+        private readonly string autoStartFilePath = Path.Combine("Data", "autostart.config");
         public MainWindow()
         {
             InitializeComponent();
@@ -344,11 +348,79 @@ namespace JobSniper
             UpdateDashboardCounters();
 
             GridDashboard.IsEnabled = true;
-            Title = "JobSniper - Můj kariérní zen";
+            Title = Properties.Resources.WindowTitle;
             LogToConsole("Systém připraven a data načtena...");
 
-            _ = StartScrapingEngineAsync();
+            //_ = StartScrapingEngineAsync();
+            ChkAutoStart.IsChecked = File.Exists(autoStartFilePath);
+            UpdateDashboardUI();
+
+            if (ChkAutoStart.IsChecked == true)
+            {
+                LogToConsole("[System] Auto-start aktivní, zapínám scrapování...");
+                _ = ToggleScrapingEngineAsync();
+            }
+            else
+            {
+                LogToConsole("[System] Aplikace je připravena v režimu pauzy. Stiskněte 'Spustit Scraping'.");
+            }
             UpdateKeywordChips();
+        }
+        private void ChkAutoStart_Click(object sender, RoutedEventArgs e)
+        {
+            if (ChkAutoStart.IsChecked == true)
+                File.WriteAllText(autoStartFilePath, "1");
+            else if (File.Exists(autoStartFilePath))
+                File.Delete(autoStartFilePath);
+        }
+
+        private async void BtnToggleScraping_Click(object sender, RoutedEventArgs e)
+        {
+            await ToggleScrapingEngineAsync();
+        }
+
+        private async Task ToggleScrapingEngineAsync()
+        {
+            if (_engineState == EngineState.Idle)
+            {
+                _engineState = EngineState.Running;
+                UpdateDashboardUI();
+                await StartScrapingEngineAsync();
+            }
+            else if (_engineState == EngineState.Running)
+            {
+                _engineState = EngineState.Cancelling;
+                UpdateDashboardUI();
+                _scraperCts?.Cancel(); // Odeslání signálu všem scraperům k bezpečnému ukončení
+            }
+        }
+
+        private void UpdateDashboardUI()
+        {
+            int activeCount = savedUrls?.Count(u => u.IsActive) ?? 0;
+            int totalCount = savedUrls?.Count ?? 0;
+
+            // Formátovaný string z Resources nahrazuje hardcoded text
+            TxtActiveScrapersInfo.Text = string.Format(Properties.Resources.Dashboard_ActiveTargetsFormat, activeCount, totalCount);
+
+            switch (_engineState)
+            {
+                case EngineState.Idle:
+                    BtnToggleScraping.Content = Properties.Resources.Dashboard_BtnStartScraping;
+                    BtnToggleScraping.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#27AE60")); // Zelená
+                    BtnToggleScraping.IsEnabled = true;
+                    break;
+                case EngineState.Running:
+                    BtnToggleScraping.Content = Properties.Resources.Dashboard_BtnStopScraping;
+                    BtnToggleScraping.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E74C3C")); // Červená
+                    BtnToggleScraping.IsEnabled = true;
+                    break;
+                case EngineState.Cancelling:
+                    BtnToggleScraping.Content = Properties.Resources.Dashboard_BtnCancelling;
+                    BtnToggleScraping.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#95A5A6")); // Šedá
+                    BtnToggleScraping.IsEnabled = false;
+                    break;
+            }
         }
         private string RemoveDiacritics(string text)
         {
@@ -559,9 +631,12 @@ namespace JobSniper
 
         private async Task StartScrapingEngineAsync()
         {
+            _scraperCts = new CancellationTokenSource();
+            var token = _scraperCts.Token;
             LogToConsole("Starting scraper engine...");
-
-            foreach (var url in savedUrls)
+            try
+            {
+                foreach (var url in savedUrls)
             {
                 if (!url.IsActive) continue;
 
@@ -578,8 +653,23 @@ namespace JobSniper
                 }
 
                 LogToConsole($"[Engine] Using {scraper.Name} for {url.Url}");
-                List<JobOffer> newJobs = await scraper.ScrapeUrlAsync(url.Url, LogToConsole);
-
+                //List<JobOffer> newJobs = await scraper.ScrapeUrlAsync(url.Url, LogToConsole);
+                List<JobOffer> newJobs = new List<JobOffer>();
+                try
+                {
+                    // Předáváme CancellationToken dál!
+                    newJobs = await scraper.ScrapeUrlAsync(url.Url, LogToConsole, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    LogToConsole($"[Engine] Scraping bezpečně přerušen na žádost uživatele.");
+                    break; // Bezpečně vyskočíme ze smyčky scraperů
+                }
+                catch (Exception ex)
+                {
+                    LogToConsole($"[Chyba] Během scrapování došlo k chybě: {ex.Message}");
+                    continue;
+                }
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     int addedCount = 0;
@@ -633,7 +723,8 @@ namespace JobSniper
                         LogToConsole($"[System] Saved {addedCount} new offers. Ignored {dupCount} duplicates.");
                 });
 
-                await Task.Delay(3000);
+                //await Task.Delay(3000);
+                try { await Task.Delay(3000, token); } catch (TaskCanceledException) { break; }
             }
 
             Application.Current.Dispatcher.Invoke(() =>
@@ -641,7 +732,18 @@ namespace JobSniper
                 ArchiveExpiredJobs();
             });
 
-            LogToConsole("All URLs processed. Cycle finished.");
+                LogToConsole(_engineState == EngineState.Cancelling
+                                ? "Scraping cycle byl zastaven."
+                                : "All URLs processed. Cycle finished.");
+            }
+            finally
+            {
+                // Jakmile vše skončí (i když dojde k chybě), resetujeme UI do připraveného stavu
+                _engineState = EngineState.Idle;
+                _scraperCts?.Dispose();
+                _scraperCts = null;
+                Application.Current.Dispatcher.Invoke(UpdateDashboardUI);
+            }
         }
 
         private void ArchiveExpiredJobs()

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace JobSniper.Scrapers
 {
@@ -116,6 +117,23 @@ namespace JobSniper.Scrapers
                 results.AddRange(parsed);
                 logMessage?.Invoke($"[ExampleScraper] Page {i + 1} returned {parsed.Count} offers.");
                 await Task.Delay(200);
+            }
+            logMessage?.Invoke($"[ExampleScraper] Finished. Total offers: {results.Count}");
+            return results;
+        }
+        public async Task<List<JobOffer>> ScrapeUrlAsync(string startUrl, Action<string> logMessage, CancellationToken cancellationToken = default)
+        {
+            var results = new List<JobOffer>();
+            for (int i = 0; i < examplePages.Length; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string page = examplePages[i];
+                logMessage?.Invoke($"[ExampleScraper] Processing example page {i + 1} for URL: {startUrl}");
+                await Task.Delay(300, cancellationToken);
+                var parsed = ExtractJobsFromHtml(page);
+                results.AddRange(parsed);
+                logMessage?.Invoke($"[ExampleScraper] Page {i + 1} returned {parsed.Count} offers.");
+                await Task.Delay(200, cancellationToken);
             }
             logMessage?.Invoke($"[ExampleScraper] Finished. Total offers: {results.Count}");
             return results;

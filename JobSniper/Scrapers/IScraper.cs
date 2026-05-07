@@ -1,6 +1,7 @@
 ﻿using JobSniper.Models;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace JobSniper.Scrapers
@@ -11,6 +12,6 @@ namespace JobSniper.Scrapers
         string Name { get; }
 
         // Každý scraper musí mít tuto metodu
-        Task<List<JobOffer>> ScrapeUrlAsync(string startUrl, Action<string> logMessage);
+        Task<List<JobOffer>> ScrapeUrlAsync(string startUrl, Action<string> logMessage, CancellationToken cancellationToken = default);
     }
 }

@@ -11,7 +11,7 @@ namespace JobSniper
     /// </summary>
     public partial class App : Application
     {
-       /* protected override void OnStartup(StartupEventArgs e)
+        /*protected override void OnStartup(StartupEventArgs e)
         {
             // Vytvoříme anglickou kulturu (např. americkou angličtinu)
             var culture = new CultureInfo("en-US"); // Můžeš použít i jen "en" pro obecnou angličtinu

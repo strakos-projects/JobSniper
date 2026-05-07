@@ -340,11 +340,65 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Active URLs: {0} out of {1}. (Manage in Settings).
+        /// </summary>
+        public static string Dashboard_ActiveTargetsFormat {
+            get {
+                return ResourceManager.GetString("Dashboard_ActiveTargetsFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Active targets: Loading....
+        /// </summary>
+        public static string Dashboard_ActiveTargetsLoading {
+            get {
+                return ResourceManager.GetString("Dashboard_ActiveTargetsLoading", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Background processes (Scraper).
         /// </summary>
         public static string Dashboard_BackgroundProcesses {
             get {
                 return ResourceManager.GetString("Dashboard_BackgroundProcesses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný ⏳ Cancelling....
+        /// </summary>
+        public static string Dashboard_BtnCancelling {
+            get {
+                return ResourceManager.GetString("Dashboard_BtnCancelling", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný ▶ Start Scraping.
+        /// </summary>
+        public static string Dashboard_BtnStartScraping {
+            get {
+                return ResourceManager.GetString("Dashboard_BtnStartScraping", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný ⏹ Stop (Running...).
+        /// </summary>
+        public static string Dashboard_BtnStopScraping {
+            get {
+                return ResourceManager.GetString("Dashboard_BtnStopScraping", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Automatically start on app launch.
+        /// </summary>
+        public static string Dashboard_ChkAutoStart {
+            get {
+                return ResourceManager.GetString("Dashboard_ChkAutoStart", resourceCulture);
             }
         }
         

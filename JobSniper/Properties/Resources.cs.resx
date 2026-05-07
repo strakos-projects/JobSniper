@@ -51,7 +51,24 @@
   <data name="Menu_Crm" xml:space="preserve"><value>🏢 CRM (Firmy)</value></data>
   <data name="Menu_Settings" xml:space="preserve"><value>⚙️ Nastavení &amp; Filtry</value></data>
 
-
+	<data name="Dashboard_BtnStartScraping" xml:space="preserve">
+    <value>▶ Spustit Scraping</value>
+  </data>
+	<data name="Dashboard_BtnStopScraping" xml:space="preserve">
+    <value>⏹ Zastavit (Probíhá...)</value>
+  </data>
+	<data name="Dashboard_BtnCancelling" xml:space="preserve">
+    <value>⏳ Ukončování...</value>
+  </data>
+	<data name="Dashboard_ChkAutoStart" xml:space="preserve">
+    <value>Automaticky zahájit po spuštění aplikace</value>
+  </data>
+	<data name="Dashboard_ActiveTargetsLoading" xml:space="preserve">
+    <value>Aktivní cíle: Načítám...</value>
+  </data>
+	<data name="Dashboard_ActiveTargetsFormat" xml:space="preserve">
+    <value>Aktivní URL adresy: {0} z celkových {1}. (Správa probíhá v Nastavení)</value>
+  </data>
 <data name="Search_Label" xml:space="preserve"><value>🔍 Hledat:</value></data>
   <data name="Search_Tooltip" xml:space="preserve"><value>Hledá v názvu pozice a firmě</value></data>
   

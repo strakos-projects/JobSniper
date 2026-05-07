@@ -31,12 +31,35 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0" Text="{x:Static p:Resources.Dashboard_Title}" FontSize="32" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,20"/>
+            <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-            <Grid Grid.Row="1" Margin="0,0,0,30">
+                    <!-- Hlavní Action Tlačítko -->
+                    <Button x:Name="BtnToggleScraping" Click="BtnToggleScraping_Click" Grid.Column="0" Content="{x:Static p:Resources.Dashboard_BtnStartScraping}" FontSize="16" FontWeight="Bold" Foreground="White" Background="#27AE60" Padding="30,12" BorderThickness="0" Cursor="Hand">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+
+                    <!-- Info o stavech a auto-start -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <CheckBox x:Name="ChkAutoStart" Content="{x:Static p:Resources.Dashboard_ChkAutoStart}" FontSize="14" Foreground="#333" FontWeight="SemiBold" Click="ChkAutoStart_Click" Cursor="Hand"/>
+                        <TextBlock x:Name="TxtActiveScrapersInfo" Text="{x:Static p:Resources.Dashboard_ActiveTargetsLoading}" Margin="0,5,0,0" Foreground="#7F8C8D" FontSize="13"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Grid Grid.Row="2" Margin="0,0,0,30">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
@@ -63,7 +86,7 @@
                 </Border>
             </Grid>
 
-            <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="20">
+            <Border Grid.Row="3" Background="White" CornerRadius="8" Padding="20">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
