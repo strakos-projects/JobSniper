@@ -121,4 +121,35 @@
   <data name="Settings_KeywordsTitle" xml:space="preserve"><value>Klíčová slova (Rychlé filtry v Třídičce)</value></data>
   <data name="Settings_AddKeywordLabel" xml:space="preserve"><value>Nové klíčové slovo:</value></data>
   <data name="Settings_BtnAddKeyword" xml:space="preserve"><value>Přidat slovo</value></data>
+
+	<data name="CrmWindow_Tab_Crm" xml:space="preserve">
+    <value>CRM &amp; Firma</value>
+  </data>
+	<data name="CrmWindow_Tab_AiCoach" xml:space="preserve">
+    <value>🧠 AI Zhodnocení Pozice</value>
+  </data>
+	<data name="CrmWindow_Ai_MatchScore" xml:space="preserve">
+    <value>Match Skóre</value>
+  </data>
+	<data name="CrmWindow_Ai_Overqualified" xml:space="preserve">
+    <value>Riziko Overqualified</value>
+  </data>
+	<data name="CrmWindow_Ai_Underqualified" xml:space="preserve">
+    <value>Riziko Underqualified</value>
+  </data>
+	<data name="CrmWindow_Ai_HiddenRole" xml:space="preserve">
+    <value>Skrytá role pozice:</value>
+  </data>
+	<data name="CrmWindow_Ai_Strategy" xml:space="preserve">
+    <value>Doporučená Strategie:</value>
+  </data>
+	<data name="CrmWindow_Ai_RecommendedCv" xml:space="preserve">
+    <value>Doporučené CV z Masteru:</value>
+  </data>
+	<data name="CrmWindow_Ai_RedFlags" xml:space="preserve">
+    <value>Red Flags u HR:</value>
+  </data>
+	<data name="CrmWindow_Ai_CoachDetail" xml:space="preserve">
+    <value>Detailní rozbor kouče:</value>
+  </data>
 </root>

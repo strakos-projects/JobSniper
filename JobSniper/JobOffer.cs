@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using JobSniper.Models;
 namespace JobSniper.Models
 {
     public class JobOffer
@@ -25,5 +25,13 @@ namespace JobSniper.Models
         public string PortalName { get; set; } = string.Empty;
         public string Location { get; set; }
         public string Salary { get; set; }
+
+        public AiEvaluation Evaluation { get; set; }
+
+        public JobOffer()
+        {
+            // PROZATÍM (DEMO) NAPLNÍME MOCK DATY
+            Evaluation = AiEvaluation.GetDemoPosudek();
+        }
     }
 }

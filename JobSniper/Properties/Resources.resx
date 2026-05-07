@@ -120,4 +120,35 @@
   <data name="Settings_KeywordsTitle" xml:space="preserve"><value>Tracked Keywords (Quick Filters)</value></data>
   <data name="Settings_AddKeywordLabel" xml:space="preserve"><value>New Keyword:</value></data>
   <data name="Settings_BtnAddKeyword" xml:space="preserve"><value>Add Keyword</value></data>
+
+	<data name="CrmWindow_Tab_Crm" xml:space="preserve">
+    <value>CRM &amp; Company</value>
+  </data>
+	<data name="CrmWindow_Tab_AiCoach" xml:space="preserve">
+    <value>🧠 AI Position Evaluation</value>
+  </data>
+	<data name="CrmWindow_Ai_MatchScore" xml:space="preserve">
+    <value>Match Score</value>
+  </data>
+	<data name="CrmWindow_Ai_Overqualified" xml:space="preserve">
+    <value>Overqualified Risk</value>
+  </data>
+	<data name="CrmWindow_Ai_Underqualified" xml:space="preserve">
+    <value>Underqualified Risk</value>
+  </data>
+	<data name="CrmWindow_Ai_HiddenRole" xml:space="preserve">
+    <value>Hidden Position Role:</value>
+  </data>
+	<data name="CrmWindow_Ai_Strategy" xml:space="preserve">
+    <value>Recommended Strategy:</value>
+  </data>
+	<data name="CrmWindow_Ai_RecommendedCv" xml:space="preserve">
+    <value>Recommended Master CV:</value>
+  </data>
+	<data name="CrmWindow_Ai_RedFlags" xml:space="preserve">
+    <value>HR Red Flags:</value>
+  </data>
+	<data name="CrmWindow_Ai_CoachDetail" xml:space="preserve">
+    <value>Coach's Detailed Analysis:</value>
+  </data>
 </root>

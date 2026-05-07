@@ -1,5 +1,7 @@
-﻿using System;
+﻿using JobSniper.Models;
+using System;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 
 namespace JobSniper
@@ -24,8 +26,23 @@ namespace JobSniper
 
             ChkIsBlacklisted.IsChecked = isBlacklisted;
             CmbPotential.SelectedIndex = _profile.Potential;
-        }
 
+            var aiMock = AiEvaluation.GetDemoPosudek();
+            LoadAiEvaluationToUI(aiMock);
+        }
+        private void LoadAiEvaluationToUI(AiEvaluation ai)
+        {
+            TxtAiScore.Text = $"{ai.MatchScore} %";
+            PbOver.Value = ai.OverqualifiedRisk;
+            PbUnder.Value = ai.UnderqualifiedRisk;
+            TxtAiRole.Text = ai.HiddenRole;
+            TxtAiStrategy.Text = ai.Strategy.ToString();
+            TxtAiCategory.Text = $"Kategorie {ai.RecommendedCvCategory}";
+            TxtAiCoach.Text = ai.FullCoachText;
+
+            // Nabindování listu s Red Flags
+            ListAiRedFlags.ItemsSource = ai.RedFlags;
+        }
         private void BtnSave_Click(object sender, RoutedEventArgs e)
         {
             // Uložení aliasů (rozdělíme podle čárky, ořízneme mezery a vymažeme prázdné)

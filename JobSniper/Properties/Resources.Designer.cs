@@ -19,7 +19,7 @@ namespace JobSniper.Properties {
     // pomocí nástroje podobného aplikaci ResGen nebo Visual Studio.
     // Chcete-li přidat nebo odebrat člena, upravte souboru .ResX a pak znovu spusťte aplikaci ResGen
     // s parametrem /str nebo znovu sestavte projekt aplikace Visual Studio.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "18.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Resources {
@@ -142,6 +142,78 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Coach&apos;s Detailed Analysis:.
+        /// </summary>
+        public static string CrmWindow_Ai_CoachDetail {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_CoachDetail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Hidden Position Role:.
+        /// </summary>
+        public static string CrmWindow_Ai_HiddenRole {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_HiddenRole", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Match Score.
+        /// </summary>
+        public static string CrmWindow_Ai_MatchScore {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_MatchScore", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Overqualified Risk.
+        /// </summary>
+        public static string CrmWindow_Ai_Overqualified {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_Overqualified", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Recommended Master CV:.
+        /// </summary>
+        public static string CrmWindow_Ai_RecommendedCv {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_RecommendedCv", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný HR Red Flags:.
+        /// </summary>
+        public static string CrmWindow_Ai_RedFlags {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_RedFlags", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Recommended Strategy:.
+        /// </summary>
+        public static string CrmWindow_Ai_Strategy {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_Strategy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Underqualified Risk.
+        /// </summary>
+        public static string CrmWindow_Ai_Underqualified {
+            get {
+                return ResourceManager.GetString("CrmWindow_Ai_Underqualified", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Company aliases (separated by three semicolons ;;;):.
         /// </summary>
         public static string CrmWindow_AliasesLabel {
@@ -237,6 +309,24 @@ namespace JobSniper.Properties {
         public static string CrmWindow_RepWarning {
             get {
                 return ResourceManager.GetString("CrmWindow_RepWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný 🧠 AI Position Evaluation.
+        /// </summary>
+        public static string CrmWindow_Tab_AiCoach {
+            get {
+                return ResourceManager.GetString("CrmWindow_Tab_AiCoach", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný CRM &amp; Company.
+        /// </summary>
+        public static string CrmWindow_Tab_Crm {
+            get {
+                return ResourceManager.GetString("CrmWindow_Tab_Crm", resourceCulture);
             }
         }
         
