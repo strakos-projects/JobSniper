@@ -154,6 +154,18 @@
                     </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Position}" Binding="{Binding Title}" Width="*" />
+                        <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_AiScore}" Width="90" SortMemberPath="Evaluation.MatchScore">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Evaluation.MatchScore, StringFormat='🤖 {0} %', FallbackValue=''}" 
+                           Foreground="#27AE60" 
+                           FontWeight="Bold" 
+                           VerticalAlignment="Center" 
+                           HorizontalAlignment="Center" 
+                           ToolTip="AI Match Score"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Zdroj" Binding="{Binding PortalName}" Width="120">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">

@@ -73,7 +73,7 @@
   <data name="Dashboard_MyOpportunities" xml:space="preserve"><value>My Opportunities</value></data>
   <data name="Dashboard_Trashed" xml:space="preserve"><value>Trashed: Auto / Manual</value></data>
   <data name="Dashboard_BackgroundProcesses" xml:space="preserve"><value>Background processes (Scraper)</value></data>
-
+	<data name="Grid_AiScore" xml:space="preserve"><value>AI Score</value></data>
   <data name="Grid_Position" xml:space="preserve"><value>Position</value></data>
   <data name="Grid_Company" xml:space="preserve"><value>Company</value></data>
   <data name="Grid_Location" xml:space="preserve"><value>Location</value></data>

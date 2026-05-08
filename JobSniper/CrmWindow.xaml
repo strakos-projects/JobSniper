@@ -80,8 +80,19 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="5">
+                                        <!-- PŮVODNÍ: <TextBlock Text="{Binding Title}" ... /> NAHRAZENO ZA STACKPANEL S AI SKÓRE -->
                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#2C3E50"/>
-                                        <TextBlock Text="{Binding DateScraped, StringFormat=d}" FontSize="11" Foreground="#7F8C8D" Margin="0,2,0,0"/>
+
+                                        <!-- 2. Řádek: Datum a AI Skóre vedle sebe -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                            <TextBlock Text="{Binding DateScraped, StringFormat=d}" FontSize="11" Foreground="#7F8C8D" VerticalAlignment="Center"/>
+
+                                            <TextBlock Text="{Binding Evaluation.MatchScore, StringFormat=' • 🤖 {0} %', FallbackValue=''}" 
+                           FontSize="11" 
+                           Foreground="#27AE60" 
+                           FontWeight="Bold" 
+                           VerticalAlignment="Center"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

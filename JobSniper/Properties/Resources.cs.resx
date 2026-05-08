@@ -71,7 +71,7 @@
   </data>
 <data name="Search_Label" xml:space="preserve"><value>🔍 Hledat:</value></data>
   <data name="Search_Tooltip" xml:space="preserve"><value>Hledá v názvu pozice a firmě</value></data>
-  
+	<data name="Grid_AiScore" xml:space="preserve"><value>AI Skóre</value></data>
   <data name="Dashboard_Title" xml:space="preserve"><value>Dashboard / Přehled</value></data>
   <data name="Dashboard_WaitingInbox" xml:space="preserve"><value>Čeká v Třídičce</value></data>
   <data name="Dashboard_MyOpportunities" xml:space="preserve"><value>Moje Příležitosti</value></data>

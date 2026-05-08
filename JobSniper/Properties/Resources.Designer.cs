@@ -457,6 +457,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný AI Score.
+        /// </summary>
+        public static string Grid_AiScore {
+            get {
+                return ResourceManager.GetString("Grid_AiScore", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný Company.
         /// </summary>
         public static string Grid_Company {
