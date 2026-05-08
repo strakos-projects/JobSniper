@@ -231,7 +231,7 @@ namespace JobSniper
                     if (existingJob != null)
                     {
                         // "Smazání" provedeme vyprázdněním textu v repozitáři
-                        _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, "");
+                        _evaluationRepo.DeleteEvaluation(existingJob.JobId);
                         existingJob.Evaluation = null;
 
                         LogToConsole($"[AI Agent] Evaluation deleted for job: {existingJob.Title}");

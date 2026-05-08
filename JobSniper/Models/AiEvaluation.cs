@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JobSniper.Models
 {
@@ -21,7 +23,46 @@ namespace JobSniper.Models
         public ApplyStrategy Strategy { get; set; }
         public List<string> RedFlags { get; set; } = new List<string>();
         public string FullCoachText { get; set; }
+        public static AiEvaluation ParseFromAiOutput(string rawText)
+        {
+            if (string.IsNullOrWhiteSpace(rawText)) return null;
 
+            int startIndex = rawText.IndexOf('{');
+            int endIndex = rawText.LastIndexOf('}');
+
+            if (startIndex == -1 || endIndex == -1 || startIndex > endIndex)
+            {
+                // Žádný JSON nenalezen, vrátíme aspoň text
+                return new AiEvaluation { FullCoachText = rawText };
+            }
+
+            // Rozdělení na JSON a textový posudek
+            string jsonPart = rawText.Substring(startIndex, endIndex - startIndex + 1);
+            string textPart = rawText.Substring(0, startIndex).Trim();
+
+            // Nastavení parseru s klíčovým konvertorem pro Enum
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() } // TOTO ŘEŠÍ TVŮJ PROBLÉM
+            };
+
+            try
+            {
+                var evaluation = JsonSerializer.Deserialize<AiEvaluation>(jsonPart, options);
+                if (evaluation != null)
+                {
+                    evaluation.FullCoachText = textPart; // Přibalíme si ten posudek
+                }
+                return evaluation;
+            }
+            catch (JsonException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"JSON Parse Error: {ex.Message}");
+                // Fallback: vrátíme aspoň text, když JSON spadne
+                return new AiEvaluation { FullCoachText = rawText };
+            }
+        }
         // Statická metoda, která nám nasimuluje to, co by jinak přišlo z webu
         public static AiEvaluation GetDemoPosudek()
         {

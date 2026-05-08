@@ -22,7 +22,12 @@ namespace JobSniper.Models
                 try
                 {
                     string json = File.ReadAllText(_filePath);
-                    _evaluations = JsonSerializer.Deserialize<Dictionary<string, AiEvaluation>>(json) ?? new Dictionary<string, AiEvaluation>();
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+                    };
+                    _evaluations = JsonSerializer.Deserialize<Dictionary<string, AiEvaluation>>(json, options) ?? new Dictionary<string, AiEvaluation>();
                 }
                 catch
                 {
@@ -33,7 +38,12 @@ namespace JobSniper.Models
 
         public void Save()
         {
-            string json = JsonSerializer.Serialize(_evaluations, new JsonSerializerOptions { WriteIndented = true });
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+            };
+            string json = JsonSerializer.Serialize(_evaluations, options);
             File.WriteAllText(_filePath, json);
         }
 
@@ -42,19 +52,34 @@ namespace JobSniper.Models
             if (string.IsNullOrEmpty(jobId)) return null;
             return _evaluations.TryGetValue(jobId, out var eval) ? eval : null;
         }
-
-        public void AddOrUpdateEvaluation(string jobId, string text)
+        public void DeleteEvaluation(string jobId)
         {
             if (string.IsNullOrEmpty(jobId)) return;
 
-            if (!_evaluations.ContainsKey(jobId))
+            if (_evaluations.ContainsKey(jobId))
             {
-                _evaluations[jobId] = new AiEvaluation();
+                _evaluations.Remove(jobId);
+                Save(); 
             }
+        }
+        public void AddOrUpdateEvaluation(string jobId, string rawAiText)
+        {
+            if (string.IsNullOrEmpty(jobId) || string.IsNullOrWhiteSpace(rawAiText)) return;
+            var parsedEval = AiEvaluation.ParseFromAiOutput(rawAiText);
 
-            // Můžeš sem později přidat i parsování skóre atd.
-            _evaluations[jobId].FullCoachText = text;
-            Save(); // Ukládáme POUZE tento menší JSON soubor
+            if (parsedEval != null)
+            {
+                _evaluations[jobId] = parsedEval;
+            }
+            else
+            {
+                if (!_evaluations.ContainsKey(jobId))
+                {
+                    _evaluations[jobId] = new AiEvaluation();
+                }
+                _evaluations[jobId].FullCoachText = rawAiText;
+            }
+            Save(); 
         }
     }
 }
