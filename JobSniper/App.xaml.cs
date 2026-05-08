@@ -11,10 +11,10 @@ namespace JobSniper
     /// </summary>
     public partial class App : Application
     {
-       protected override void OnStartup(StartupEventArgs e)
+       /* protected override void OnStartup(StartupEventArgs e)
         {
             // Vytvoříme anglickou kulturu (např. americkou angličtinu)
-            var culture = new CultureInfo("en-US"); // Můžeš použít i jen "en" pro obecnou angličtinu
+           var culture = new CultureInfo("en-US"); // Můžeš použít i jen "en" pro obecnou angličtinu
 
             // Nastaví jazyk pro formátování (datum, měna, čísla)
             Thread.CurrentThread.CurrentCulture = culture;
@@ -28,6 +28,6 @@ namespace JobSniper
 
             // Je nutné zavolat base metodu, aby aplikace normálně odstartovala
             base.OnStartup(e);
-        }  /**/
+        }  */
     }
 }
