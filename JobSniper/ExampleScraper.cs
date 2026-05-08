@@ -97,6 +97,7 @@ namespace JobSniper.Scrapers
 <article class=""job""><a href=""/job/1201"">AI Product Owner</a><span class=""company"">AIForge</span><span class=""location"">Prague</span><span class=""salary"">140 000</span></article>
 <article class=""job""><a href=""/job/1202"">Cloud Engineer</a><span class=""company"">Cloudy</span><span class=""location"">Brno</span><span class=""salary"">90 000</span></article>
 <article class=""job""><a href=""/job/1203"">Support Intern</a><span class=""company"">VANDY Ltd</span><span class=""location"">Plzeò</span><span class=""salary"">9 000</span></article>
+<article class=""job""><a href=""/job/1204"">Facility Manager</a><span class=""company"">Property Services Group</span><span class=""location"">Prague</span><span class=""salary"">85 000</span></article>
 </body>
 </html>"
         };

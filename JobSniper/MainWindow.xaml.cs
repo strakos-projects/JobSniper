@@ -452,6 +452,7 @@ namespace JobSniper
             {
                 LogToConsole("[System] Aplikace je připravena v režimu pauzy. Stiskněte 'Spustit Scraping'.");
             }
+            
             UpdateKeywordChips();
         }
         private void ChkAutoStart_Click(object sender, RoutedEventArgs e)
