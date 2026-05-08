@@ -65,65 +65,103 @@
             </TabItem>
 
             <TabItem Header="{x:Static p:Resources.CrmWindow_Tab_AiCoach}" FontSize="14" FontWeight="SemiBold">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="15" Background="White">
+                <Grid Background="White">
+                    <Grid.ColumnDefinitions>
+                        <!-- Levý sloupec pro seznam inzerátů (Master) -->
+                        <ColumnDefinition Width="220"/>
+                        <!-- Pravý sloupec pro detail AI posudku (Detail) -->
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                        <Border Background="#F8F9FA" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,0,15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <StackPanel Grid.Column="0" Grid.RowSpan="3" Margin="0,0,15,0">
-                                    <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_MatchScore}" FontSize="12" Foreground="#7F8C8D"/>
-                                    <TextBlock Name="TxtAiScore" Text="85 %" FontSize="22" FontWeight="Bold" Foreground="#27AE60" Margin="0,0,0,10"/>
-
-                                    <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Overqualified}" FontSize="12" Foreground="#7F8C8D"/>
-                                    <ProgressBar Name="PbOver" Minimum="0" Maximum="10" Value="9" Height="10" Foreground="#E74C3C" Margin="0,2,0,10"/>
-
-                                    <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Underqualified}" FontSize="12" Foreground="#7F8C8D"/>
-                                    <ProgressBar Name="PbUnder" Minimum="0" Maximum="10" Value="8" Height="10" Foreground="#F39C12" Margin="0,2,0,0"/>
-                                </StackPanel>
-
-                                <TextBlock Grid.Column="1" Grid.Row="0" Text="{x:Static p:Resources.CrmWindow_Ai_HiddenRole}" FontSize="12" Foreground="#7F8C8D"/>
-                                <TextBlock Name="TxtAiRole" Grid.Column="1" Grid.Row="1" Text="..." FontSize="16" FontWeight="SemiBold" Foreground="#2C3E50" TextWrapping="Wrap" Margin="0,0,0,10"/>
-
-                                <TextBlock Grid.Column="1" Grid.Row="2" Text="{x:Static p:Resources.CrmWindow_Ai_Strategy}" FontSize="12" Foreground="#7F8C8D"/>
-                                <Border Grid.Column="1" Grid.Row="3" Background="#3498DB" CornerRadius="4" Padding="5" HorizontalAlignment="Left" Margin="0,5,0,0">
-                                    <TextBlock Name="TxtAiStrategy" Text="..." Foreground="White" FontWeight="Bold" FontSize="12"/>
-                                </Border>
-                            </Grid>
-                        </Border>
-
-                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_RecommendedCv}" FontSize="14" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
-                        <TextBlock Name="TxtAiCategory" Text="..." FontSize="14" Foreground="#2980B9" FontWeight="Bold" Margin="0,0,0,15"/>
-
-                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_RedFlags}" FontSize="14" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
-                        <ItemsControl Name="ListAiRedFlags" Margin="0,0,0,15">
-                            <ItemsControl.ItemTemplate>
+                    <!-- SEZNAM POZIC FIRMY -->
+                    <Border Grid.Column="0" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0">
+                        <ListBox Name="LstCompanyJobs" BorderThickness="0" Background="Transparent" 
+                     SelectionChanged="LstCompanyJobs_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding}" Foreground="#C0392B" FontSize="13" Margin="15,2,0,2">
-                                        <TextBlock.LayoutTransform>
-                                            <TranslateTransform X="-10"/>
-                                        </TextBlock.LayoutTransform>
-                                    </TextBlock>
+                                    <StackPanel Margin="5">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#2C3E50"/>
+                                        <TextBlock Text="{Binding DateScraped, StringFormat=d}" FontSize="11" Foreground="#7F8C8D" Margin="0,2,0,0"/>
+                                    </StackPanel>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListBox.ItemTemplate>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="5"/>
+                                    <Setter Property="Margin" Value="0,0,0,2"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </Border>
 
-                        <Rectangle Height="1" Fill="#E5E7EB" Margin="0,0,0,15"/>
+                    <!-- PLACEHOLDER POKUD NENÍ POSUDEK / NENÍ VÝBĚR -->
+                    <Grid Name="GridNoEval" Grid.Column="1" Visibility="Visible" Background="#F8F9FA">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="🤖" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <TextBlock Name="TxtNoEvalMsg" Text="Select a job offer to view its AI evaluation." 
+                           Foreground="#95A5A6" FontSize="14" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Grid>
 
-                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_CoachDetail}" FontSize="14" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
-                        <TextBlock Name="TxtAiCoach" TextWrapping="Wrap" FontSize="14" Foreground="#4A5568" LineHeight="20"/>
+                    <!-- DETAIL POSUDKU (Zobrazí se jen když má vybraný inzerát hodnocení) -->
+                    <ScrollViewer Name="ScrollEvalDetails" Grid.Column="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="20">
+                            <Border Background="#F8F9FA" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
 
-                    </StackPanel>
-                </ScrollViewer>
+                                    <StackPanel Grid.Column="0" Grid.RowSpan="3" Margin="0,0,15,0">
+                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_MatchScore}" FontSize="12" Foreground="#7F8C8D"/>
+                                        <TextBlock Name="TxtAiScore" Text="0 %" FontSize="22" FontWeight="Bold" Foreground="#27AE60" Margin="0,0,0,10"/>
+
+                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Overqualified}" FontSize="12" Foreground="#7F8C8D"/>
+                                        <ProgressBar Name="PbOver" Minimum="0" Maximum="10" Value="0" Height="10" Foreground="#E74C3C" Margin="0,2,0,10"/>
+
+                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Underqualified}" FontSize="12" Foreground="#7F8C8D"/>
+                                        <ProgressBar Name="PbUnder" Minimum="0" Maximum="10" Value="0" Height="10" Foreground="#F39C12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{x:Static p:Resources.CrmWindow_Ai_HiddenRole}" FontSize="12" Foreground="#7F8C8D"/>
+                                    <TextBlock Name="TxtAiRole" Grid.Column="1" Grid.Row="1" Text="-" FontSize="14" FontWeight="SemiBold" Foreground="#2C3E50" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                                    <TextBlock Grid.Column="1" Grid.Row="2" Text="{x:Static p:Resources.CrmWindow_Ai_Strategy}" FontSize="12" Foreground="#7F8C8D"/>
+                                    <Border Grid.Column="1" Grid.Row="3" Background="#3498DB" CornerRadius="4" Padding="5" HorizontalAlignment="Left" Margin="0,5,0,0">
+                                        <TextBlock Name="TxtAiStrategy" Text="-" Foreground="White" FontWeight="Bold" FontSize="12"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <!-- DYNAMICKÉ RED FLAGS -->
+                            <StackPanel Name="PanelRedFlags">
+                                <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_RedFlags}" FontSize="14" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
+                                <ItemsControl Name="ListAiRedFlags" Margin="0,0,0,15">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Foreground="#C0392B" FontSize="13" Margin="15,2,0,2">
+                                                <TextBlock.LayoutTransform>
+                                                    <TranslateTransform X="-10"/>
+                                                </TextBlock.LayoutTransform>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Rectangle Height="1" Fill="#E5E7EB" Margin="0,0,0,15"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_CoachDetail}" FontSize="14" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
+                            <TextBlock Name="TxtAiCoach" TextWrapping="Wrap" FontSize="14" Foreground="#4A5568" LineHeight="20"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </TabItem>
         </TabControl>
     </Grid>

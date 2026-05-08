@@ -46,6 +46,8 @@ namespace JobSniper
         private List<string> blacklistedCompanies = new List<string>();
         private readonly string crmFilePath = Path.Combine("Data", "crm_companies.json");
         private List<CompanyProfile> crmProfiles = new List<CompanyProfile>();
+        private EvaluationRepository _evaluationRepo;
+        private readonly string evaluationsFilePath = Path.Combine("Data", "evaluations.json");
         private enum EngineState { Idle, Running, Cancelling }
         private EngineState _engineState = EngineState.Idle;
         private CancellationTokenSource _scraperCts;
@@ -185,7 +187,90 @@ namespace JobSniper
                     }
                 });
             };
+            // 2. NOVÁ LOGIKA: Blesková a bezpečná kontrola URL
+            // 2. NOVÁ LOGIKA: Blesková kontrola včetně vrácení existujícího hodnocení
+            _browserBridge.OnCheckUrl = (url) =>
+            {
+                if (string.IsNullOrWhiteSpace(url)) return new { isMatch = false };
 
+                string cleanUrl = url.Split('#')[0];
+                int qMarkIndex = cleanUrl.IndexOf('?');
+                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+
+                // PŘIDÁNO <object> - kompilátor nyní ví, že očekáváme návratovou hodnotu
+                return Application.Current.Dispatcher.Invoke<object>(() =>
+                {
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job => job.Url != null && job.Url.StartsWith(cleanUrl));
+
+                    if (existingJob != null)
+                    {
+                        var eval = _evaluationRepo.GetEvaluation(existingJob.JobId);
+                        bool hasText = !string.IsNullOrWhiteSpace(eval?.FullCoachText);
+
+                        return new
+                        {
+                            isMatch = true,
+                            hasEvaluation = hasText,
+                            evaluationText = hasText ? eval.FullCoachText : ""
+                        };
+                    }
+                    return new { isMatch = false };
+                });
+            };
+            _browserBridge.OnDeleteEvaluation = (url) =>
+            {
+                if (string.IsNullOrWhiteSpace(url)) return;
+
+                string cleanUrl = url.Split('#')[0];
+                int qMarkIndex = cleanUrl.IndexOf('?');
+                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+
+                Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job => job.Url != null && job.Url.StartsWith(cleanUrl));
+                    if (existingJob != null)
+                    {
+                        // "Smazání" provedeme vyprázdněním textu v repozitáři
+                        _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, "");
+                        existingJob.Evaluation = null;
+
+                        LogToConsole($"[AI Agent] Evaluation deleted for job: {existingJob.Title}");
+                        CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                    }
+                });
+            };
+            // 3. NOVÁ LOGIKA: Uložení AI Hodnocení (Asynchronní, nevyblokuje okno)
+            _browserBridge.OnSaveEvaluation = (url, evalText) =>
+            {
+                if (string.IsNullOrWhiteSpace(url)) return;
+
+                string cleanUrl = url.Split('#')[0];
+                int qMarkIndex = cleanUrl.IndexOf('?');
+                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+
+                Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job => job.Url != null && job.Url.StartsWith(cleanUrl));
+
+                    if (existingJob != null)
+                    {
+                        // 1. Bezpečné uložení do separátního evaluations.json (přes JobId)
+                        _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, evalText);
+
+                        // 2. Připnutí objektu do paměti, aby UI vidělo změnu ihned (bez restartu)
+                        existingJob.Evaluation = _evaluationRepo.GetEvaluation(existingJob.JobId);
+
+                        LogToConsole($"[AI Agent] Evaluation successfully saved for job: {existingJob.Title}");
+
+                        // Tímto se zaktualizuje DataGrid, ale nezapisuje se zbytečně obří jobs.json
+                        CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                    }
+                    else
+                    {
+                        LogToConsole($"[Warning] Received AI evaluation for unknown URL: {cleanUrl}");
+                    }
+                });
+            };
             try
             {
                 _browserBridge.Start();
@@ -212,7 +297,9 @@ namespace JobSniper
             // VLAJKY PRO ULOŽENÍ
             bool needsCrmSave = false;
             bool needsJobsSave = false;
-
+            _evaluationRepo = new EvaluationRepository(evaluationsFilePath);
+            _evaluationRepo.Load();
+            LogToConsole("[System] Loaded AI evaluations repository.");
             await Task.Run(() =>
             {
                 var p = (IProgress<string>)progress;
@@ -272,6 +359,7 @@ namespace JobSniper
                         if (j == null) continue; // Ochrana proti poškozenému JSONu inzerátu
 
                         current++;
+                        j.Evaluation = _evaluationRepo.GetEvaluation(j.JobId);
 
                         // 1. Blesková cesta (včetně zachycení "NONE")
                         if (j.CrmCompanyId != null)
@@ -794,8 +882,9 @@ namespace JobSniper
                 bool isBlacklisted = profile.Aliases.Any(a => blacklistedCompanies.Any(b => IsCompanyMatch(b, a))) ||
                                      blacklistedCompanies.Any(b => IsCompanyMatch(b, job.Company));
 
-                var crmWindow = new CrmWindow(profile, job.Company, isBlacklisted) { Owner = this };
-
+                //var crmWindow = new CrmWindow(profile, job.Company, isBlacklisted) { Owner = this };
+                var companyJobs = DatabaseOfJobs.Where(j => j.CrmCompanyId == profile.CrmId).ToList();
+                var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo) { Owner = this };
                 if (crmWindow.ShowDialog() == true)
                 {
                     if (isNewProfile)
@@ -1070,7 +1159,8 @@ namespace JobSniper
         private void BtnAddNewCompany_Click(object sender, RoutedEventArgs e)
         {
             var newProfile = new CompanyProfile();
-            var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false) { Owner = this };
+            //var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false) { Owner = this };
+            var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false, new List<JobOffer>(), _evaluationRepo) { Owner = this };
 
             if (crmWindow.ShowDialog() == true && newProfile.Aliases.Count > 0)
             {
@@ -1116,7 +1206,9 @@ namespace JobSniper
             if (sender is Button btn && btn.Tag is CompanyProfile profile)
             {
                 bool isBlacklisted = profile.Aliases.Any(a => IsCompanyBlacklisted(a));
-                var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted) { Owner = this };
+                //var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted) { Owner = this };
+                var companyJobs = DatabaseOfJobs.Where(j => j.CrmCompanyId == profile.CrmId).ToList();
+                var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo) { Owner = this };
                 if (crmWindow.ShowDialog() == true)
                 {
                     SaveCrm();

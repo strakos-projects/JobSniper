@@ -1,13 +1,43 @@
-﻿using System;
+﻿using JobSniper.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using JobSniper.Models;
 namespace JobSniper.Models
 {
     public class JobOffer
     {
+        //public string JobId { get; set; } = Guid.NewGuid().ToString("N");
+        private string _jobId;
+
+        public string JobId
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_jobId))
+                {
+                    if (!string.IsNullOrEmpty(Url))
+                    {
+                        // Deterministické ID: Ze stejné URL vznikne vždy stejný řetězec
+                        using (var md5 = System.Security.Cryptography.MD5.Create())
+                        {
+                            var bytes = System.Text.Encoding.UTF8.GetBytes(Url);
+                            var hash = md5.ComputeHash(bytes);
+                            _jobId = Convert.ToHexString(hash).ToLower();
+                        }
+                    }
+                    else
+                    {
+                        // Pojistka pro úplně nové inzeráty bez URL
+                        _jobId = Guid.NewGuid().ToString("N");
+                    }
+                }
+                return _jobId;
+            }
+            set => _jobId = value;
+        }
         public int Id { get; set; }
         public string CrmCompanyId { get; set; }
         public string ExternalId { get; set; }
@@ -26,12 +56,12 @@ namespace JobSniper.Models
         public string Location { get; set; }
         public string Salary { get; set; }
 
-        public AiEvaluation Evaluation { get; set; }
+        [JsonIgnore] public AiEvaluation Evaluation { get; set; }
 
         public JobOffer()
         {
             // PROZATÍM (DEMO) NAPLNÍME MOCK DATY
-            Evaluation = AiEvaluation.GetDemoPosudek();
+            //Evaluation = AiEvaluation.GetDemoPosudek();
         }
     }
 }

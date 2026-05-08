@@ -24,6 +24,10 @@ namespace JobSniper.Plugins
 
         public event EventHandler<JobDataEventArgs>? OnDataReceived;
 
+        public Func<string, object>? OnCheckUrl; // Nyní vrací object, který zaserilizujeme do JSONu
+        public Action<string, string>? OnSaveEvaluation;
+        public Action<string>? OnDeleteEvaluation; // Nový delegát pro smazání
+
         public BrowserBridge(int port = 55055)
         {
             _port = port;
@@ -100,47 +104,75 @@ namespace JobSniper.Plugins
             {
                 try
                 {
-                    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding ?? Encoding.UTF8))
+                    using var reader = new StreamReader(request.InputStream, request.ContentEncoding ?? Encoding.UTF8);
+                    string json = reader.ReadToEnd();
+                    using JsonDocument doc = JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+
+                    string absolutePath = request.Url?.AbsolutePath.TrimEnd('/') ?? "";
+
+                    // ROUTA 1: Kontrola URL
+                    if (absolutePath.EndsWith("/check-url"))
                     {
-                        string json = reader.ReadToEnd();
+                        string url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "";
 
-                        using (JsonDocument doc = JsonDocument.Parse(json))
-                        {
-                            var root = doc.RootElement;
+                        // Získáme komplexní odpověď (isMatch, hasEvaluation, evaluationText)
+                        object result = OnCheckUrl?.Invoke(url) ?? new { isMatch = false };
 
-                            var args = new JobDataEventArgs
-                            {
-                                Url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "",
-                                JobText = root.TryGetProperty("text", out var textEl) ? textEl.GetString() ?? "" : "",
-                                CompanyName = root.TryGetProperty("company", out var compEl) ? compEl.GetString() ?? "" : "",
-                                JobTitle = root.TryGetProperty("title", out var titleEl) ? titleEl.GetString() ?? "" : ""
-                            };
-
-                            OnDataReceived?.Invoke(this, args);
-                        }
+                        string jsonResponse = JsonSerializer.Serialize(result);
+                        SendJsonResponse(response, 200, jsonResponse);
                     }
+                    // ROUTA 2: Uložení AI Hodnocení
+                    else if (absolutePath.EndsWith("/save-eval"))
+                    {
+                        string url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "";
+                        string evalText = root.TryGetProperty("evaluationText", out var evalEl) ? evalEl.GetString() ?? "" : "";
 
-                    byte[] buffer = Encoding.UTF8.GetBytes("{\"status\":\"success\"}");
-                    response.ContentType = "application/json";
-                    response.ContentLength64 = buffer.Length;
-                    response.OutputStream.Write(buffer, 0, buffer.Length);
+                        OnSaveEvaluation?.Invoke(url, evalText);
+                        SendJsonResponse(response, 200, "{\"status\":\"success\"}");
+                    }
+                    // ROUTA 3: Smazání AI Hodnocení
+                    else if (absolutePath.EndsWith("/delete-eval"))
+                    {
+                        string url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "";
+
+                        OnDeleteEvaluation?.Invoke(url);
+                        SendJsonResponse(response, 200, "{\"status\":\"success\"}");
+                    }
+                    // ROUTA 3: Původní scrapování (Fallback)
+                    else
+                    {
+                        var args = new JobDataEventArgs
+                        {
+                            Url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "",
+                            JobText = root.TryGetProperty("text", out var textEl) ? textEl.GetString() ?? "" : "",
+                            CompanyName = root.TryGetProperty("company", out var compEl) ? compEl.GetString() ?? "" : "",
+                            JobTitle = root.TryGetProperty("title", out var titleEl) ? titleEl.GetString() ?? "" : ""
+                        };
+
+                        OnDataReceived?.Invoke(this, args);
+                        SendJsonResponse(response, 200, "{\"status\":\"success\"}");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    response.StatusCode = 500;
-                    byte[] buffer = Encoding.UTF8.GetBytes($"{{\"status\":\"error\", \"message\":\"{ex.Message}\"}}");
-                    response.OutputStream.Write(buffer, 0, buffer.Length);
-                }
-                finally
-                {
-                    response.Close();
+                    SendJsonResponse(response, 500, $"{{\"status\":\"error\", \"message\":\"{ex.Message}\"}}");
                 }
             }
             else
             {
-                response.StatusCode = 405; // Method Not Allowed
+                response.StatusCode = 405;
                 response.Close();
             }
+        }
+        private void SendJsonResponse(HttpListenerResponse response, int statusCode, string jsonBody)
+        {
+            response.StatusCode = statusCode;
+            response.ContentType = "application/json";
+            byte[] buffer = Encoding.UTF8.GetBytes(jsonBody);
+            response.ContentLength64 = buffer.Length;
+            response.OutputStream.Write(buffer, 0, buffer.Length);
+            response.Close();
         }
     }
 }
