@@ -3,6 +3,7 @@ using JobSniper.Plugins;
 using JobSniper.Scrapers;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -884,7 +885,12 @@ namespace JobSniper
                                      blacklistedCompanies.Any(b => IsCompanyMatch(b, job.Company));
 
                 //var crmWindow = new CrmWindow(profile, job.Company, isBlacklisted) { Owner = this };
-                var companyJobs = DatabaseOfJobs.Where(j => j.CrmCompanyId == profile.CrmId).ToList();
+                //var companyJobs = DatabaseOfJobs.Where(j => j.CrmCompanyId == profile.CrmId).ToList();
+                var companyJobs = DatabaseOfJobs.Where(j =>
+    j.CrmCompanyId == profile.CrmId ||
+    profile.Aliases.Any(a => IsCompanyMatch(a, j.Company)) ||
+    IsCompanyMatch(j.Company, job.Company)
+).Distinct().ToList();
                 var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo) { Owner = this };
                 if (crmWindow.ShowDialog() == true)
                 {
