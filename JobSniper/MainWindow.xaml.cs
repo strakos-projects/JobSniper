@@ -1,6 +1,9 @@
-﻿using JobSniper.Models;
+﻿using JobSniper.AiServices;
+using JobSniper.AiServices.Steps;
+using JobSniper.Models;
 using JobSniper.Plugins;
 using JobSniper.Scrapers;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -15,7 +18,6 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace JobSniper
 {
     public partial class MainWindow : Window
@@ -37,7 +39,8 @@ namespace JobSniper
         private Dictionary<string, int> _companyReputationCache = new Dictionary<string, int>();
         private Dictionary<string, string> _companyIdCache = new Dictionary<string, string>();
         private readonly string dataFolder = "Data";
-
+        private AiConfig _aiConfig = new AiConfig();
+        private readonly string aiConfigFilePath = Path.Combine("Data", "aiconfig.json");
         private readonly string urlsFilePath = Path.Combine("Data", "urls.json");
         private readonly string jobsFilePath = Path.Combine("Data", "jobs.json");
         private readonly string blacklistFilePath = Path.Combine("Data", "blacklist.json");
@@ -53,6 +56,46 @@ namespace JobSniper
         private EngineState _engineState = EngineState.Idle;
         private CancellationTokenSource _scraperCts;
         private readonly string autoStartFilePath = Path.Combine("Data", "autostart.config");
+        private void LoadAiConfig()
+        {
+            if (File.Exists(aiConfigFilePath))
+            {
+                try
+                {
+                    _aiConfig = JsonSerializer.Deserialize<AiConfig>(File.ReadAllText(aiConfigFilePath)) ?? new AiConfig();
+                }
+                catch { /* Ignorovat chyby JSONu a použít defaultní hodnoty */ }
+            }
+
+            // Projít do UI
+            TxtCvPath.Text = _aiConfig.MasterCvPath;
+            TxtLmStudioUrl.Text = string.IsNullOrWhiteSpace(_aiConfig.LmStudioUrl) ? "http://127.0.0.1:1234/v1/chat/completions" : _aiConfig.LmStudioUrl;
+        }
+
+        private void BtnSaveAiConfig_Click(object sender, RoutedEventArgs e)
+        {
+            _aiConfig.MasterCvPath = TxtCvPath.Text.Trim();
+            _aiConfig.LmStudioUrl = TxtLmStudioUrl.Text.Trim();
+
+            File.WriteAllText(aiConfigFilePath, JsonSerializer.Serialize(_aiConfig, new JsonSerializerOptions { WriteIndented = true }));
+
+            MessageBox.Show("AI Configuration saved successfully.", "Settings Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BtnBrowseCv_Click(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Title = "Select Master CV",
+                Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                TxtCvPath.Text = openFileDialog.FileName;
+            }
+        }
         public MainWindow()
         {
             InitializeComponent();
@@ -157,7 +200,67 @@ namespace JobSniper
                 }
             }
         }
+        private async Task RunLocalAiWorkflowAsync(string jobUrl, string jobDescription)
+        {
+            try
+            {
+                LogToConsole("[Local AI] Starting evaluation pipeline...");
 
+                // 1. Load private Master CV (dynamically from settings)
+                string privateCvPath = _aiConfig.MasterCvPath;
+
+                if (string.IsNullOrWhiteSpace(privateCvPath) || !File.Exists(privateCvPath))
+                {
+                    LogToConsole("[Local AI Error] Master CV not found. Please set the correct path in the Settings tab.");
+                    return;
+                }
+                string masterCv = await File.ReadAllTextAsync(privateCvPath);
+
+                // 2. Initialize and run Chain of Thought pipeline
+                string apiUrl = string.IsNullOrWhiteSpace(_aiConfig.LmStudioUrl) ? "http://127.0.0.1:1234/v1/chat/completions" : _aiConfig.LmStudioUrl;
+                var localAi = new LmStudioClient(apiUrl);
+
+                var pipeline = new AiPipelineOrchestrator(localAi);
+
+                // Zbytek kódu zůstává beze změny...
+                pipeline.AddStep(new ExtractKeywordsStep());
+                pipeline.AddStep(new EvaluateChancesStep());
+
+                var result = await pipeline.RunPipelineAsync(jobUrl, jobDescription, masterCv);
+
+                // 3. Save result to Database (Must be on UI Thread)
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (string.IsNullOrWhiteSpace(result.JobUrl)) return;
+
+                    string cleanUrl = result.JobUrl.Split('#')[0];
+                    int qMarkIndex = cleanUrl.IndexOf('?');
+                    if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
+
+                    if (existingJob != null)
+                    {
+                        // Save via the existing EvaluationRepo to evaluations.json
+                        _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, result.FinalEvaluation);
+                        existingJob.Evaluation = _evaluationRepo.GetEvaluation(existingJob.JobId);
+
+                        LogToConsole($"[Local AI] Evaluation successfully saved for job: {existingJob.Title}");
+                        CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
+                    }
+                    else
+                    {
+                        LogToConsole($"[Local AI Warning] Received evaluation for unknown URL: {cleanUrl}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogToConsole($"[Local AI Error] Workflow failed: {ex.Message}");
+            }
+        }
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             // ---- Load Web Plugins and start the server ----
@@ -175,6 +278,11 @@ namespace JobSniper
             }
 
             _browserBridge = new Plugins.BrowserBridge();
+            _browserBridge.OnLocalEvaluationRequested = async (url, text) =>
+            {
+                // Spustí se asynchronně mimo hlavní vlákno, takže GUI nezamrzne
+                await RunLocalAiWorkflowAsync(url, text);
+            };
             _browserBridge.OnDataReceived += (s, args) =>
             {
                 // Anything that manipulates the Clipboard or folders should run on the main thread
@@ -441,6 +549,7 @@ namespace JobSniper
 
             RefreshUrlList();
             LoadKeywords();
+            LoadAiConfig();
             DataGridJobs.ItemsSource = DatabaseOfJobs;
 
             UpdateDashboardCounters();
@@ -1400,5 +1509,10 @@ namespace JobSniper
         public string Keyword { get; set; }
         public int Count { get; set; }
         public string DisplayText => $"{Keyword} ({Count})";
+    }
+    public class AiConfig
+    {
+        public string MasterCvPath { get; set; } = "";
+        public string LmStudioUrl { get; set; } = "http://127.0.0.1:1234/v1/chat/completions";
     }
 }

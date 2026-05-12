@@ -28,6 +28,9 @@ namespace JobSniper.Plugins
         public Action<string, string>? OnSaveEvaluation;
         public Action<string>? OnDeleteEvaluation; // Nový delegát pro smazání
 
+        // NOVÉ: Delegát pro spuštění lokálního AI workflow (předává URL a text inzerátu)
+        public Action<string, string>? OnLocalEvaluationRequested;
+
         public BrowserBridge(int port = 55055)
         {
             _port = port;
@@ -139,7 +142,19 @@ namespace JobSniper.Plugins
                         OnDeleteEvaluation?.Invoke(url);
                         SendJsonResponse(response, 200, "{\"status\":\"success\"}");
                     }
-                    // ROUTA 3: Původní scrapování (Fallback)
+                    // ROUTA 4 (NOVÁ): Spuštění lokálního AI (LM Studio)
+                    else if (absolutePath.EndsWith("/local-eval"))
+                    {
+                        string url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "";
+                        string text = root.TryGetProperty("text", out var textEl) ? textEl.GetString() ?? "" : "";
+
+                        // Předáme WPF aplikaci, ať workflow spustí asynchronně na pozadí
+                        OnLocalEvaluationRequested?.Invoke(url, text);
+
+                        // Odpovíme prohlížeči hned, že proces začal (aby doplněk nečekal minutu na model)
+                        SendJsonResponse(response, 200, "{\"status\":\"processing\", \"message\":\"Local AI evaluation started.\"}");
+                    }
+                    // ROUTA 5: Původní scrapování (Fallback)
                     else
                     {
                         var args = new JobDataEventArgs
