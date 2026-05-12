@@ -12,25 +12,36 @@ namespace JobSniper.Models
         //public string JobId { get; set; } = Guid.NewGuid().ToString("N");
         private string _jobId;
 
+        private string _pairingUrl;
+        public string PairingUrl
+        {
+            get => _pairingUrl;
+            set
+            {
+                _pairingUrl = value;
+                _jobId = null; 
+            }
+        }
+
         public string JobId
         {
             get
             {
                 if (string.IsNullOrEmpty(_jobId))
                 {
-                    if (!string.IsNullOrEmpty(Url))
+                    string urlToHash = !string.IsNullOrWhiteSpace(PairingUrl) ? PairingUrl : Url;
+
+                    if (!string.IsNullOrEmpty(urlToHash))
                     {
-                        // Deterministické ID: Ze stejné URL vznikne vždy stejný řetězec
                         using (var md5 = System.Security.Cryptography.MD5.Create())
                         {
-                            var bytes = System.Text.Encoding.UTF8.GetBytes(Url);
+                            var bytes = System.Text.Encoding.UTF8.GetBytes(urlToHash);
                             var hash = md5.ComputeHash(bytes);
                             _jobId = Convert.ToHexString(hash).ToLower();
                         }
                     }
                     else
                     {
-                        // Pojistka pro úplně nové inzeráty bez URL
                         _jobId = Guid.NewGuid().ToString("N");
                     }
                 }

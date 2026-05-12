@@ -168,4 +168,25 @@
 	<data name="CrmWindow_Ai_CoachDetail" xml:space="preserve">
     <value>Coach's Detailed Analysis:</value>
   </data>
+	<data name="CrmWindow_Tab_JobInfo" xml:space="preserve">
+    <value>Job Info</value>
+  </data>
+	<data name="CrmWindow_OriginalUrl" xml:space="preserve">
+    <value>Original Scraped URL:</value>
+  </data>
+	<data name="CrmWindow_PairingUrl" xml:space="preserve">
+    <value>AI Browser Pairing URL (Override):</value>
+  </data>
+	<data name="CrmWindow_PairingUrlHelp" xml:space="preserve">
+    <value>If the browser redirected you, paste the final URL here to sync the AI Evaluation with this job offer.</value>
+  </data>
+	<data name="CrmWindow_BtnSaveUrl" xml:space="preserve">
+    <value>Link AI</value>
+  </data>
+	<data name="CrmWindow_SelectJobMsg" xml:space="preserve">
+    <value>Select a job from the list to view details.</value>
+  </data>
+	<data name="CrmWindow_Tab_AiEval" xml:space="preserve">
+    <value>AI Evaluation</value>
+  </data>
 </root>

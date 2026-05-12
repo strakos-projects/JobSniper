@@ -190,6 +190,7 @@ namespace JobSniper
             };
             // 2. NOVÁ LOGIKA: Blesková a bezpečná kontrola URL
             // 2. NOVÁ LOGIKA: Blesková kontrola včetně vrácení existujícího hodnocení
+            // 2. NOVÁ LOGIKA: Blesková kontrola včetně vrácení existujícího hodnocení
             _browserBridge.OnCheckUrl = (url) =>
             {
                 if (string.IsNullOrWhiteSpace(url)) return new { isMatch = false };
@@ -198,10 +199,12 @@ namespace JobSniper
                 int qMarkIndex = cleanUrl.IndexOf('?');
                 if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
 
-                // PŘIDÁNO <object> - kompilátor nyní ví, že očekáváme návratovou hodnotu
                 return Application.Current.Dispatcher.Invoke<object>(() =>
                 {
-                    var existingJob = DatabaseOfJobs.FirstOrDefault(job => job.Url != null && job.Url.StartsWith(cleanUrl));
+                    // OPRAVA: Hledáme shodu buď v PairingUrl (pokud existuje) nebo v původní Url
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
 
                     if (existingJob != null)
                     {
@@ -218,6 +221,7 @@ namespace JobSniper
                     return new { isMatch = false };
                 });
             };
+
             _browserBridge.OnDeleteEvaluation = (url) =>
             {
                 if (string.IsNullOrWhiteSpace(url)) return;
@@ -228,10 +232,13 @@ namespace JobSniper
 
                 Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    var existingJob = DatabaseOfJobs.FirstOrDefault(job => job.Url != null && job.Url.StartsWith(cleanUrl));
+                    // OPRAVA: Aplikováno i na mazání
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
+
                     if (existingJob != null)
                     {
-                        // "Smazání" provedeme vyprázdněním textu v repozitáři
                         _evaluationRepo.DeleteEvaluation(existingJob.JobId);
                         existingJob.Evaluation = null;
 
@@ -240,6 +247,7 @@ namespace JobSniper
                     }
                 });
             };
+
             // 3. NOVÁ LOGIKA: Uložení AI Hodnocení (Asynchronní, nevyblokuje okno)
             _browserBridge.OnSaveEvaluation = (url, evalText) =>
             {
@@ -251,19 +259,20 @@ namespace JobSniper
 
                 Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    var existingJob = DatabaseOfJobs.FirstOrDefault(job => job.Url != null && job.Url.StartsWith(cleanUrl));
+                    // OPRAVA: Aplikováno i na ukládání
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
 
                     if (existingJob != null)
                     {
-                        // 1. Bezpečné uložení do separátního evaluations.json (přes JobId)
+                        // Bezpečné uložení do separátního evaluations.json (přes JobId, které teď bezpečně sedí)
                         _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, evalText);
 
-                        // 2. Připnutí objektu do paměti, aby UI vidělo změnu ihned (bez restartu)
+                        // Připnutí objektu do paměti
                         existingJob.Evaluation = _evaluationRepo.GetEvaluation(existingJob.JobId);
 
                         LogToConsole($"[AI Agent] Evaluation successfully saved for job: {existingJob.Title}");
-
-                        // Tímto se zaktualizuje DataGrid, ale nezapisuje se zbytečně obří jobs.json
                         CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                     }
                     else
@@ -892,6 +901,10 @@ namespace JobSniper
     IsCompanyMatch(j.Company, job.Company)
 ).Distinct().ToList();
                 var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo) { Owner = this };
+
+                crmWindow.OnJobUpdated += () =>
+                {
+                    SaveJobs();                };
                 if (crmWindow.ShowDialog() == true)
                 {
                     if (isNewProfile)

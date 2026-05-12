@@ -250,6 +250,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Link AI.
+        /// </summary>
+        public static string CrmWindow_BtnSaveUrl {
+            get {
+                return ResourceManager.GetString("CrmWindow_BtnSaveUrl", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný ⛔ Company is blocked (auto-trash).
         /// </summary>
         public static string CrmWindow_ChkBlocked {
@@ -273,6 +282,33 @@ namespace JobSniper.Properties {
         public static string CrmWindow_HistoryLabel {
             get {
                 return ResourceManager.GetString("CrmWindow_HistoryLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Original Scraped URL:.
+        /// </summary>
+        public static string CrmWindow_OriginalUrl {
+            get {
+                return ResourceManager.GetString("CrmWindow_OriginalUrl", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný AI Browser Pairing URL (Override):.
+        /// </summary>
+        public static string CrmWindow_PairingUrl {
+            get {
+                return ResourceManager.GetString("CrmWindow_PairingUrl", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný If the browser redirected you, paste the final URL here to sync the AI Evaluation with this job offer..
+        /// </summary>
+        public static string CrmWindow_PairingUrlHelp {
+            get {
+                return ResourceManager.GetString("CrmWindow_PairingUrlHelp", resourceCulture);
             }
         }
         
@@ -313,6 +349,15 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Select a job from the list to view details..
+        /// </summary>
+        public static string CrmWindow_SelectJobMsg {
+            get {
+                return ResourceManager.GetString("CrmWindow_SelectJobMsg", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný 🧠 AI Position Evaluation.
         /// </summary>
         public static string CrmWindow_Tab_AiCoach {
@@ -322,11 +367,29 @@ namespace JobSniper.Properties {
         }
         
         /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný AI Evaluation.
+        /// </summary>
+        public static string CrmWindow_Tab_AiEval {
+            get {
+                return ResourceManager.GetString("CrmWindow_Tab_AiEval", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Vyhledá lokalizovaný řetězec podobný CRM &amp; Company.
         /// </summary>
         public static string CrmWindow_Tab_Crm {
             get {
                 return ResourceManager.GetString("CrmWindow_Tab_Crm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Vyhledá lokalizovaný řetězec podobný Job Info.
+        /// </summary>
+        public static string CrmWindow_Tab_JobInfo {
+            get {
+                return ResourceManager.GetString("CrmWindow_Tab_JobInfo", resourceCulture);
             }
         }
         

@@ -169,4 +169,25 @@
 	<data name="CrmWindow_Ai_CoachDetail" xml:space="preserve">
     <value>Detailní rozbor kouče:</value>
   </data>
+	<data name="CrmWindow_Tab_JobInfo" xml:space="preserve">
+    <value>Detail Inzerátu</value>
+  </data>
+	<data name="CrmWindow_OriginalUrl" xml:space="preserve">
+    <value>Původní zachycená URL:</value>
+  </data>
+	<data name="CrmWindow_PairingUrl" xml:space="preserve">
+    <value>Párovací URL z prohlížeče (Override):</value>
+  </data>
+	<data name="CrmWindow_PairingUrlHelp" xml:space="preserve">
+    <value>Pokud došlo v prohlížeči k přesměrování, vložte sem výslednou URL. Tím dojde ke spárování inzerátu s AI posudkem z bridge.</value>
+  </data>
+	<data name="CrmWindow_BtnSaveUrl" xml:space="preserve">
+    <value>Spárovat</value>
+  </data>
+	<data name="CrmWindow_SelectJobMsg" xml:space="preserve">
+    <value>Vyberte inzerát ze seznamu pro zobrazení detailů.</value>
+  </data>
+	<data name="CrmWindow_Tab_AiEval" xml:space="preserve">
+    <value>AI Posudek</value>
+  </data>
 </root>

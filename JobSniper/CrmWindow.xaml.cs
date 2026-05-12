@@ -9,6 +9,7 @@ namespace JobSniper
 {
     public partial class CrmWindow : Window
     {
+        public event Action OnJobUpdated;
         private CompanyProfile _profile;
         private EvaluationRepository _evalRepo;
         public bool IsBlacklisted => ChkIsBlacklisted.IsChecked == true;
@@ -46,23 +47,61 @@ namespace JobSniper
         {
             if (LstCompanyJobs.SelectedItem is JobOffer selectedJob)
             {
-                // Zeptáme se "Lazy" repozitáře, jestli má pro toto JobId posudek
-                var eval = _evalRepo.GetEvaluation(selectedJob.JobId);
+                // Skryjeme placeholder, ukážeme detaily
+                GridNoSelection.Visibility = Visibility.Collapsed;
+                TabJobDetails.Visibility = Visibility.Visible;
 
-                if (eval != null && !string.IsNullOrWhiteSpace(eval.FullCoachText))
-                {
-                    // Zapneme UI detaily
-                    GridNoEval.Visibility = Visibility.Collapsed;
-                    ScrollEvalDetails.Visibility = Visibility.Visible;
-                    LoadAiEvaluationToUI(eval);
-                }
-                else
-                {
-                    // Vypneme UI detaily a zobrazíme zprávu
-                    GridNoEval.Visibility = Visibility.Visible;
-                    ScrollEvalDetails.Visibility = Visibility.Collapsed;
-                    TxtNoEvalMsg.Text = "No AI evaluation generated for this role yet.";
-                }
+                // Naplnění Job Info záložky
+                TxtDetailTitle.Text = selectedJob.Title;
+                TxtDetailDate.Text = $"Scraped on: {selectedJob.DateScraped:g}";
+                TxtOriginalUrl.Text = selectedJob.Url;
+                TxtPairingUrl.Text = selectedJob.PairingUrl;
+
+                // Zkontrolujeme posudek (vytaženo do samostatné metody)
+                CheckAiEvaluation(selectedJob);
+
+                // Přepneme uživatele inteligentně na správný Tab (volitelné UX vylepšení)
+                var eval = _evalRepo.GetEvaluation(selectedJob.JobId);
+                TabJobDetails.SelectedIndex = (eval != null && !string.IsNullOrWhiteSpace(eval.FullCoachText)) ? 1 : 0;
+            }
+            else
+            {
+                GridNoSelection.Visibility = Visibility.Visible;
+                TabJobDetails.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void CheckAiEvaluation(JobOffer job)
+        {
+            var eval = _evalRepo.GetEvaluation(job.JobId);
+
+            if (eval != null && !string.IsNullOrWhiteSpace(eval.FullCoachText))
+            {
+                GridNoEval.Visibility = Visibility.Collapsed;
+                ScrollEvalDetails.Visibility = Visibility.Visible;
+                LoadAiEvaluationToUI(eval);
+            }
+            else
+            {
+                GridNoEval.Visibility = Visibility.Visible;
+                ScrollEvalDetails.Visibility = Visibility.Collapsed;
+                TxtNoEvalMsg.Text = "No AI evaluation generated for this URL yet.";
+            }
+        }
+
+        private void BtnSavePairingUrl_Click(object sender, RoutedEventArgs e)
+        {
+            if (LstCompanyJobs.SelectedItem is JobOffer selectedJob)
+            {
+                selectedJob.PairingUrl = TxtPairingUrl.Text.Trim();
+
+                // Tím, že jsme nastavili PairingUrl, se v JobOffer automaticky nulluje _jobId
+                // a přepočítá se nový hash. Stačí jen znovu zavolat kontrolu:
+                CheckAiEvaluation(selectedJob);
+                OnJobUpdated?.Invoke();
+                MessageBox.Show("Pairing URL updated. Evaluator link refreshed.", "URL Updated", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Zde ideálně zavolat uložení kolekce do DB / JSONu!
             }
         }
 
