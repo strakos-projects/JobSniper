@@ -107,16 +107,35 @@ namespace JobSniper
 
         private void LoadAiEvaluationToUI(AiEvaluation ai)
         {
-            TxtAiScore.Text = $"{ai.MatchScore} %";
+            // Nové rozdělené skóre
+            TxtRawScore.Text = $"{ai.RawHrScore} %";
+            TxtStrategicScore.Text = $"{ai.StrategicScore} %";
+
+            // Rizika
             PbOver.Value = ai.OverqualifiedRisk;
             PbUnder.Value = ai.UnderqualifiedRisk;
+
+            // Strategie a role
             TxtAiRole.Text = string.IsNullOrWhiteSpace(ai.HiddenRole) ? "Unknown" : ai.HiddenRole;
             TxtAiStrategy.Text = ai.Strategy.ToString();
+            TxtStrategyReasoning.Text = string.IsNullOrWhiteSpace(ai.StrategyReasoning) ? "Není specifikováno." : ai.StrategyReasoning;
+
+            // Logika pro Go / No-Go vizuál
+            if (ai.GoNoGo)
+            {
+                BorderGoNoGo.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#27AE60")); // Zelená
+                TxtGoNoGo.Text = "🚀 GO FOR IT";
+            }
+            else
+            {
+                BorderGoNoGo.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E74C3C")); // Červená
+                TxtGoNoGo.Text = "⛔ NO GO (IGNORE)";
+            }
 
             // Plný text od AI
             TxtAiCoach.Text = ai.FullCoachText;
 
-            // Pokud nejsou žádné RedFlags, panel raději schováme, ať to vypadá čistě
+            // RedFlags
             if (ai.RedFlags != null && ai.RedFlags.Any())
             {
                 PanelRedFlags.Visibility = Visibility.Visible;

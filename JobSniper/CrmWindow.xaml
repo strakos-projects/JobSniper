@@ -84,8 +84,8 @@
                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#2C3E50"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                             <TextBlock Text="{Binding DateScraped, StringFormat=d}" FontSize="11" Foreground="#7F8C8D" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Evaluation.MatchScore, StringFormat=' • 🤖 {0} %', FallbackValue=''}" 
-                                                       FontSize="11" Foreground="#27AE60" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Evaluation.StrategicScore, StringFormat=' • 🎯 {0} %', FallbackValue=''}" 
+           FontSize="11" Foreground="#27AE60" FontWeight="Bold" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
@@ -161,26 +161,40 @@
                                                         <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
                                                     </Grid.RowDefinitions>
 
-                                                    <StackPanel Grid.Column="0" Grid.RowSpan="3" Margin="0,0,15,0">
-                                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_MatchScore}" FontSize="12" Foreground="#7F8C8D"/>
-                                                        <TextBlock Name="TxtAiScore" Text="0 %" FontSize="22" FontWeight="Bold" Foreground="#27AE60" Margin="0,0,0,10"/>
+                                                    <StackPanel Grid.Column="0" Grid.RowSpan="4" Margin="0,0,15,0">
+                                                        <TextBlock Text="Raw HR Skóre" FontSize="11" Foreground="#7F8C8D" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Name="TxtRawScore" Text="0 %" FontSize="18" FontWeight="SemiBold" Foreground="#E74C3C" Margin="0,0,0,10"/>
 
-                                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Overqualified}" FontSize="12" Foreground="#7F8C8D"/>
-                                                        <ProgressBar Name="PbOver" Minimum="0" Maximum="10" Value="0" Height="10" Foreground="#E74C3C" Margin="0,2,0,10"/>
+                                                        <TextBlock Text="Strategické Skóre" FontSize="11" Foreground="#7F8C8D" FontWeight="Bold"/>
+                                                        <TextBlock Name="TxtStrategicScore" Text="0 %" FontSize="24" FontWeight="Bold" Foreground="#27AE60" Margin="0,0,0,15"/>
 
-                                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Underqualified}" FontSize="12" Foreground="#7F8C8D"/>
-                                                        <ProgressBar Name="PbUnder" Minimum="0" Maximum="10" Value="0" Height="10" Foreground="#F39C12" Margin="0,2,0,0"/>
+                                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Overqualified}" FontSize="11" Foreground="#7F8C8D"/>
+                                                        <ProgressBar Name="PbOver" Minimum="0" Maximum="10" Value="0" Height="8" Foreground="#E74C3C" Margin="0,2,0,10"/>
+
+                                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Underqualified}" FontSize="11" Foreground="#7F8C8D"/>
+                                                        <ProgressBar Name="PbUnder" Minimum="0" Maximum="10" Value="0" Height="8" Foreground="#F39C12" Margin="0,2,0,0"/>
                                                     </StackPanel>
 
-                                                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{x:Static p:Resources.CrmWindow_Ai_HiddenRole}" FontSize="12" Foreground="#7F8C8D"/>
-                                                    <TextBlock Name="TxtAiRole" Grid.Column="1" Grid.Row="1" Text="-" FontSize="14" FontWeight="SemiBold" Foreground="#2C3E50" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                                    <StackPanel Grid.Column="1" Grid.RowSpan="4">
 
-                                                    <TextBlock Grid.Column="1" Grid.Row="2" Text="{x:Static p:Resources.CrmWindow_Ai_Strategy}" FontSize="12" Foreground="#7F8C8D"/>
-                                                    <Border Grid.Column="1" Grid.Row="3" Background="#3498DB" CornerRadius="4" Padding="5" HorizontalAlignment="Left" Margin="0,5,0,0">
-                                                        <TextBlock Name="TxtAiStrategy" Text="-" Foreground="White" FontWeight="Bold" FontSize="12"/>
-                                                    </Border>
+                                                        <Border Name="BorderGoNoGo" CornerRadius="4" Padding="6,3" HorizontalAlignment="Left" Margin="0,0,0,10">
+                                                            <TextBlock Name="TxtGoNoGo" Text="N/A" Foreground="White" FontWeight="Bold" FontSize="11"/>
+                                                        </Border>
+
+                                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_HiddenRole}" FontSize="11" Foreground="#7F8C8D"/>
+                                                        <TextBlock Name="TxtAiRole" Text="-" FontSize="13" FontWeight="SemiBold" Foreground="#2C3E50" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                                                        <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_Strategy}" FontSize="11" Foreground="#7F8C8D"/>
+                                                        <Border Background="#3498DB" CornerRadius="4" Padding="5" HorizontalAlignment="Left" Margin="0,2,0,5">
+                                                            <TextBlock Name="TxtAiStrategy" Text="-" Foreground="White" FontWeight="Bold" FontSize="11"/>
+                                                        </Border>
+
+                                                        <TextBlock Text="Důvod strategie:" FontSize="11" Foreground="#7F8C8D" Margin="0,5,0,2"/>
+                                                        <TextBlock Name="TxtStrategyReasoning" Text="-" FontSize="12" Foreground="#34495E" TextWrapping="Wrap" FontStyle="Italic"/>
+                                                    </StackPanel>
                                                 </Grid>
                                             </Border>
 
