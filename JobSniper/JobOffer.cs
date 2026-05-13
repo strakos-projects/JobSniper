@@ -19,7 +19,7 @@ namespace JobSniper.Models
             set
             {
                 _pairingUrl = value;
-                _jobId = null; 
+                // _jobId = null; 
             }
         }
 
