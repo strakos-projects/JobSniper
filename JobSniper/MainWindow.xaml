@@ -154,7 +154,7 @@
                     </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Position}" Binding="{Binding Title}" Width="*" />
-                        <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_AiScore}" Width="90" SortMemberPath="Evaluation.MatchScore">
+                        <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_AiScore}" Width="90" SortMemberPath="SortableAiScore">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Evaluation.StrategicScore, StringFormat='🤖 {0} %', FallbackValue=''}" 
@@ -225,6 +225,14 @@
                                                     <DataTrigger Binding="{Binding IsNewOffer}" Value="True">
                                                         <Setter Property="Text" Value="{x:Static p:Resources.Badge_New}"/>
                                                         <Setter Property="Foreground" Value="#3498DB"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+
+                                                    <DataTrigger Binding="{Binding IsJustScraped}" Value="True">
+                                                        <!-- Můžeš si text "FRESH" hodit do Resources.resx -->
+                                                        <Setter Property="Text" Value="🔥 FRESH"/>
+                                                        <Setter Property="Foreground" Value="#27AE60"/>
+                                                        <!-- Zelená barva pro odlišení -->
                                                         <Setter Property="FontWeight" Value="Bold"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>

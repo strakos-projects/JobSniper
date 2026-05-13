@@ -61,6 +61,10 @@ namespace JobSniper.Models
         public bool IsProbablyInactive => (DateTime.Now - LastSeen).TotalDays > 2;
         public bool IsNewOffer => (DateTime.Now - DateScraped).TotalHours <= 48;
 
+        [JsonIgnore]
+        public bool IsJustScraped { get; set; }
+        
+
         public int Status { get; set; }
         public int CrmReputation { get; set; } = 0;
         public string PortalName { get; set; } = string.Empty;
@@ -69,6 +73,8 @@ namespace JobSniper.Models
 
         [JsonIgnore] public AiEvaluation Evaluation { get; set; }
 
+        [JsonIgnore]
+        public int SortableAiScore => Evaluation?.StrategicScore ?? -1;
         public JobOffer()
         {
             // PROZATÍM (DEMO) NAPLNÍME MOCK DATY
