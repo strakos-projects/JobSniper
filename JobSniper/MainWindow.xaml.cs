@@ -285,13 +285,64 @@ namespace JobSniper
             };
             _browserBridge.OnDataReceived += (s, args) =>
             {
-                // Anything that manipulates the Clipboard or folders should run on the main thread
+                // ==========================================
+                // 0. OČIŠTĚNÍ VSTUPŮ (Sychr proti mezerám a enterům)
+                // ==========================================
+                args.CompanyName = args.CompanyName?.Trim();
+                args.JobTitle = args.JobTitle?.Trim();
+
+                // K zápisu do DB potřebujeme URL bez našich Chrome # parametrů!
+                string cleanUrl = args.Url.Split('#')[0];
+                int qMarkIndex = cleanUrl.IndexOf('?');
+                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+
+                // ==========================================
+                // 1. DATA ENRICHMENT (Nyní s čistou URL)
+                // ==========================================
+                var existingOffer = DatabaseOfJobs.FirstOrDefault(job =>
+                    (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
+                    (job.Url != null && job.Url.StartsWith(cleanUrl)));
+
+                if (existingOffer != null)
+                {
+                    // Používáme Contains místo ==, kdyby prohlížeč poslal "Neznámá firma "
+                    if ((string.IsNullOrWhiteSpace(args.CompanyName) || args.CompanyName.Contains("Neznámá firma"))
+                        && !string.IsNullOrWhiteSpace(existingOffer.Company)
+                        && !existingOffer.Company.Contains("Neznámá firma"))
+                    {
+                        args.CompanyName = existingOffer.Company;
+                    }
+                }
+
+                // ==========================================
+                // 2. CHYTRÝ FALLBACK (Pokud DB nepomohla)
+                // ==========================================
+                if (string.IsNullOrWhiteSpace(args.CompanyName) || args.CompanyName.Contains("Neznámá firma"))
+                {
+                    // Přidán RegexOptions.Singleline, kdyby v titulku byl schovaný enter (\n)
+                    var match = System.Text.RegularExpressions.Regex.Match(
+                        args.JobTitle ?? "",
+                        @"^(.*?)\s+(pro|v|at|ve)\s+(.*)$",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+                    if (match.Success)
+                    {
+                        args.JobTitle = match.Groups[1].Value.Trim();
+                        args.CompanyName = match.Groups[3].Value.Trim();
+                    }
+                }
+
+                // ==========================================
+                // 3. SPUŠTĚNÍ UI A PLUGINŮ
+                // ==========================================
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     LogToConsole($"[Browser] Received data for position: {args.JobTitle} at company {args.CompanyName}");
 
                     foreach (var plugin in _webPlugins)
                     {
+                        // Do pluginu posíláme originální args.Url (obsahuje #action=generate),
+                        // ale už s krásně rozsekanou firmou a pozicí!
                         plugin.Execute(args.Url, args.JobText, args.CompanyName, args.JobTitle);
                     }
                 });
