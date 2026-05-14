@@ -5,10 +5,19 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.ComponentModel; 
+using System.Runtime.CompilerServices;
+
 namespace JobSniper.Models
 {
-    public class JobOffer
+    public class JobOffer : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
         //public string JobId { get; set; } = Guid.NewGuid().ToString("N");
         private string _jobId;
 
@@ -71,8 +80,50 @@ namespace JobSniper.Models
         public string Location { get; set; }
         public string Salary { get; set; }
 
-        [JsonIgnore] public AiEvaluation Evaluation { get; set; }
+        private AiEvaluation _evaluation;
+        [JsonIgnore]
+        public AiEvaluation Evaluation
+        {
+            get => _evaluation;
+            set
+            {
+                _evaluation = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasEvaluation));
+                OnPropertyChanged(nameof(SortableAiScore));
+            }
+        }
+        //// === TRANSIENTNÍ UI STAVY PRO AI HODNOCENÍ ===
+        [JsonIgnore]
+        public bool HasEvaluation => Evaluation != null;
 
+        private bool _isAiEvaluating;
+        [JsonIgnore]
+        public bool IsAiEvaluating
+        {
+            get => _isAiEvaluating;
+            set
+            {
+                _isAiEvaluating = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _aiEvaluationError;
+        [JsonIgnore]
+        public string AiEvaluationError
+        {
+            get => _aiEvaluationError;
+            set
+            {
+                _aiEvaluationError = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasAiError));
+            }
+        }
+
+        [JsonIgnore]
+        public bool HasAiError => !string.IsNullOrEmpty(AiEvaluationError);
         [JsonIgnore]
         public int SortableAiScore => Evaluation?.StrategicScore ?? -1;
         public JobOffer()

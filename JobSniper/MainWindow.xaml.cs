@@ -1535,6 +1535,62 @@ namespace JobSniper
                 TxtSearch.Text = keyword;
             }
         }
+
+        private async void BtnRequestAiEvaluation_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is JobOffer job)
+            {
+                // Pojistka
+                if (job.IsAiEvaluating) return;
+
+                // Reset stavu
+                job.AiEvaluationError = null;
+                job.IsAiEvaluating = true;
+
+                LogToConsole($"[Local AI] Vyžádáno manuální hodnocení pro: {job.Title}");
+
+                try
+                {
+                    // POZNÁMKA PRO TEBE: Model potřebuje text inzerátu. Pokud ho nemáš uložený v objektu JobOffer,
+                    // musíš ho zde stáhnout. Využijeme tvé existující scrapery.
+                    string jobText = "";
+
+                    IScraper scraper = null;
+                    if (_availableScrapers.ContainsKey(job.PortalName))
+                    {
+                        scraper = (IScraper)Activator.CreateInstance(_availableScrapers[job.PortalName]);
+                    }
+
+                    if (scraper != null)
+                    {
+                        // Toto je pseudo-kód: Budeš muset do IScraper přidat metodu jako GetRawTextAsync(job.Url),
+                        // protože aktuálně ScrapeUrlAsync vrací List<JobOffer>, nikoliv raw text.
+                        // jobText = await scraper.GetRawTextAsync(job.Url); 
+
+                        // PRO DEMO ÚČELY (než dopíšeš metodu výše):
+                        jobText = $"Záložní text pro inzerát {job.Title} u firmy {job.Company}.";
+                    }
+
+                    if (string.IsNullOrWhiteSpace(jobText))
+                    {
+                        throw new Exception("Nepodařilo se stáhnout text inzerátu.");
+                    }
+
+                    // Zavoláme tvoji stávající pipeline
+                    await RunLocalAiWorkflowAsync(job.Url, jobText);
+                }
+                catch (Exception ex)
+                {
+                    job.AiEvaluationError = $"Chyba: {ex.Message}";
+                    LogToConsole($"[Local AI Error] Selhalo manuální hodnocení: {ex.Message}");
+                }
+                finally
+                {
+                    // Vypnutí animace načítání (samotný objekt už má případně Evaluation nastaveno z vnitřku RunLocalAiWorkflowAsync)
+                    job.IsAiEvaluating = false;
+                }
+            }
+        }
         private void UpdateKeywordChips()
         {
             TrackedKeywords.Clear();
