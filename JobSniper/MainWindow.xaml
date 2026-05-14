@@ -228,7 +228,45 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Zdroj" Binding="{Binding PortalName}" Width="120">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#7F8C8D"/>
+                                    <Setter Property="FontStyle" Value="Italic"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
+                        <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_Company}" Width="180" SortMemberPath="Company">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Company}" Margin="5,0" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CrmReputation}" Value="1">
+                                                        <Setter Property="Foreground" Value="#3498DB"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                        <Setter Property="ToolTip" Value="{x:Static p:Resources.Tooltip_CrmHistory}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding CrmReputation}" Value="2">
+                                                        <Setter Property="Foreground" Value="#F39C12"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                        <Setter Property="ToolTip" Value="{x:Static p:Resources.Tooltip_CrmWarning}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="3">
+                                                        <Setter Property="Foreground" Value="#E74C3C"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                        <Setter Property="ToolTip" Value="{x:Static p:Resources.Tooltip_Blacklisted}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Location}" Binding="{Binding Location}" Width="150" />
                         <DataGridTextColumn Header="{x:Static p:Resources.Grid_Seen}" Binding="{Binding LastSeen, StringFormat=\{0:dd.MM. HH:mm\}}" Width="100" />
                         <DataGridTemplateColumn Header="{x:Static p:Resources.Grid_Added}" Width="80" SortMemberPath="DateScraped">
