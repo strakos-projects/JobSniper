@@ -200,12 +200,13 @@ namespace JobSniper
                 }
             }
         }
+        
         private async Task RunLocalAiWorkflowAsync(string jobUrl, string jobDescription)
         {
             try
             {
                 LogToConsole("[Local AI] Starting evaluation pipeline...");
-
+                string cleanUrl = CleanJobUrl(jobUrl);
                 // 1. Load private Master CV (dynamically from settings)
                 string privateCvPath = _aiConfig.MasterCvPath;
 
@@ -226,7 +227,7 @@ namespace JobSniper
                 pipeline.AddStep(new ExtractKeywordsStep());
                 pipeline.AddStep(new EvaluateChancesStep());
 
-                var result = await pipeline.RunPipelineAsync(jobUrl, jobDescription, masterCv);
+                var result = await pipeline.RunPipelineAsync(cleanUrl, jobDescription, masterCv);
                 
 
                 // 3. Save result to Database (Must be on UI Thread)
@@ -234,9 +235,7 @@ namespace JobSniper
                 {
                     if (string.IsNullOrWhiteSpace(result.JobUrl)) return;
 
-                    string cleanUrl = result.JobUrl.Split('#')[0];
-                    int qMarkIndex = cleanUrl.IndexOf('?');
-                    if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+                    string cleanUrl = CleanJobUrl(result.JobUrl);
 
                     var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
                         (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
@@ -261,6 +260,40 @@ namespace JobSniper
             {
                 LogToConsole($"[Local AI Error] Workflow failed: {ex.Message}");
             }
+        }
+        private string CleanJobUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return url;
+
+            // 1. Odstraníme tvůj interní hash z Chrome extenze
+            string cleanUrl = url.Split('#')[0];
+
+            int qMarkIndex = cleanUrl.IndexOf('?');
+            if (qMarkIndex < 0) return cleanUrl; // URL nemá žádné parametry, je už čistá
+
+            string baseUrl = cleanUrl.Substring(0, qMarkIndex);
+            string queryString = cleanUrl.Substring(qMarkIndex + 1);
+
+            // 2. Blacklist sledovacího balastu (můžeš sem kdykoliv dopsat další)
+            var trackers = new[] { "utm_source", "utm_medium", "utm_campaign", "impressionid", "rps", "searchid", "gclid" };
+
+            // 3. Vyfiltrujeme balast, ale zachováme důležité věci jako 'id='
+            var validParams = queryString.Split('&')
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Where(p =>
+                {
+                    string key = p.Split('=')[0].ToLower();
+                    return !trackers.Contains(key);
+                })
+                .ToList();
+
+            // 4. Pokud zbyly nějaké validní parametry, složíme URL bezpečně zpět
+            if (validParams.Any())
+            {
+                return baseUrl + "?" + string.Join("&", validParams);
+            }
+
+            return baseUrl;
         }
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
@@ -293,9 +326,8 @@ namespace JobSniper
                 args.JobTitle = args.JobTitle?.Trim();
 
                 // K zápisu do DB potřebujeme URL bez našich Chrome # parametrů!
-                string cleanUrl = args.Url.Split('#')[0];
-                int qMarkIndex = cleanUrl.IndexOf('?');
-                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+                
+                string cleanUrl = CleanJobUrl(args.Url);
 
                 // ==========================================
                 // 1. DATA ENRICHMENT (Nyní s čistou URL)
@@ -355,9 +387,7 @@ namespace JobSniper
             {
                 if (string.IsNullOrWhiteSpace(url)) return new { isMatch = false };
 
-                string cleanUrl = url.Split('#')[0];
-                int qMarkIndex = cleanUrl.IndexOf('?');
-                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+                string cleanUrl = CleanJobUrl(url);
 
                 return Application.Current.Dispatcher.Invoke<object>(() =>
                 {
@@ -386,9 +416,7 @@ namespace JobSniper
             {
                 if (string.IsNullOrWhiteSpace(url)) return;
 
-                string cleanUrl = url.Split('#')[0];
-                int qMarkIndex = cleanUrl.IndexOf('?');
-                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+                string cleanUrl = CleanJobUrl(url);
 
                 Application.Current.Dispatcher.InvokeAsync(() =>
                 {
@@ -413,9 +441,7 @@ namespace JobSniper
             {
                 if (string.IsNullOrWhiteSpace(url)) return;
 
-                string cleanUrl = url.Split('#')[0];
-                int qMarkIndex = cleanUrl.IndexOf('?');
-                if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+                string cleanUrl = CleanJobUrl(url);
 
                 Application.Current.Dispatcher.InvokeAsync(() =>
                 {
@@ -938,9 +964,7 @@ namespace JobSniper
                     foreach (var job in newJobs)
                     {
                         job.PortalName = scraper.Name;
-                        string cleanUrl = job.Url;
-                        int qMarkIndex = cleanUrl.IndexOf('?');
-                        if (qMarkIndex > 0) cleanUrl = cleanUrl.Substring(0, qMarkIndex);
+                        string cleanUrl = CleanJobUrl(job.Url);
 
                         var existingJob = DatabaseOfJobs.FirstOrDefault(j =>
                             (j.Url != null && j.Url.StartsWith(cleanUrl)) ||
