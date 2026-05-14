@@ -146,6 +146,10 @@ namespace JobSniper
                 PanelRedFlags.Visibility = Visibility.Collapsed;
                 ListAiRedFlags.ItemsSource = null;
             }
+            // V metodě LoadAiEvaluationToUI:
+            TxtEvaluatedJobDescription.Text = string.IsNullOrWhiteSpace(ai.EvaluatedJobDescription)
+                ? "Source text is not available for this older evaluation."
+                : ai.EvaluatedJobDescription;
         }
         /*private void LoadAiEvaluationToUI_old(AiEvaluation ai)
         {
@@ -188,6 +192,27 @@ namespace JobSniper
         {
             this.DialogResult = false;
             this.Close();
+        }
+        // V metodě BtnDeleteEvaluation_Click:
+        private void BtnDeleteEvaluation_Click(object sender, RoutedEventArgs e)
+        {
+            if (LstCompanyJobs.SelectedItem is JobOffer selectedJob)
+            {
+                var result = MessageBox.Show(
+                    "Are you sure you want to delete this AI evaluation? The model will be able to evaluate the job offer again.",
+                    "Delete Evaluation",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    _evalRepo.DeleteEvaluation(selectedJob.JobId);
+                    selectedJob.Evaluation = null;
+
+                    OnJobUpdated?.Invoke();
+                    CheckAiEvaluation(selectedJob);
+                }
+            }
         }
     }
 }

@@ -227,6 +227,7 @@ namespace JobSniper
                 pipeline.AddStep(new EvaluateChancesStep());
 
                 var result = await pipeline.RunPipelineAsync(jobUrl, jobDescription, masterCv);
+                
 
                 // 3. Save result to Database (Must be on UI Thread)
                 Application.Current.Dispatcher.Invoke(() =>
@@ -244,7 +245,7 @@ namespace JobSniper
                     if (existingJob != null)
                     {
                         // Save via the existing EvaluationRepo to evaluations.json
-                        _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, result.FinalEvaluation);
+                        _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, result.FinalEvaluation, jobDescription);
                         existingJob.Evaluation = _evaluationRepo.GetEvaluation(existingJob.JobId);
 
                         LogToConsole($"[Local AI] Evaluation successfully saved for job: {existingJob.Title}");
@@ -1540,53 +1541,50 @@ namespace JobSniper
         {
             if (sender is Button btn && btn.Tag is JobOffer job)
             {
-                // Pojistka
                 if (job.IsAiEvaluating) return;
 
-                // Reset stavu
                 job.AiEvaluationError = null;
                 job.IsAiEvaluating = true;
 
-                LogToConsole($"[Local AI] Vyžádáno manuální hodnocení pro: {job.Title}");
+                LogToConsole($"[Local AI] Manual evaluation requested for: {job.Title}");
 
                 try
                 {
-                    // POZNÁMKA PRO TEBE: Model potřebuje text inzerátu. Pokud ho nemáš uložený v objektu JobOffer,
-                    // musíš ho zde stáhnout. Využijeme tvé existující scrapery.
-                    string jobText = "";
-
+                    string jobText = string.Empty;
                     IScraper scraper = null;
-                    if (_availableScrapers.ContainsKey(job.PortalName))
+
+                    // 1. Zkusíme najít scraper, který je u inzerátu uložen (např. Jobs.cz (Ostrý))
+                    if (!string.IsNullOrEmpty(job.PortalName) && _availableScrapers.ContainsKey(job.PortalName))
                     {
                         scraper = (IScraper)Activator.CreateInstance(_availableScrapers[job.PortalName]);
+                    }
+                    // 2. Fallback: Pokud původní scraper chybí, vezmeme první dostupný, protože GetJobDescriptionAsync už umí všechny
+                    else if (_availableScrapers.Count > 0)
+                    {
+                        scraper = (IScraper)Activator.CreateInstance(_availableScrapers.Values.First());
                     }
 
                     if (scraper != null)
                     {
-                        // Toto je pseudo-kód: Budeš muset do IScraper přidat metodu jako GetRawTextAsync(job.Url),
-                        // protože aktuálně ScrapeUrlAsync vrací List<JobOffer>, nikoliv raw text.
-                        // jobText = await scraper.GetRawTextAsync(job.Url); 
-
-                        // PRO DEMO ÚČELY (než dopíšeš metodu výše):
-                        jobText = $"Záložní text pro inzerát {job.Title} u firmy {job.Company}.";
+                        // ZDE SE DĚJE TA MAGIE - Skutečné stažení a očištění textu z URL
+                        jobText = await scraper.GetJobDescriptionAsync(job.Url, LogToConsole);
                     }
 
                     if (string.IsNullOrWhiteSpace(jobText))
                     {
-                        throw new Exception("Nepodařilo se stáhnout text inzerátu.");
+                        throw new Exception("Failed to download job description text. The page might be protected, unavailable, or the scraper logic failed.");
                     }
 
-                    // Zavoláme tvoji stávající pipeline
+                    // Odeslání skutečného staženého textu do LLM
                     await RunLocalAiWorkflowAsync(job.Url, jobText);
                 }
                 catch (Exception ex)
                 {
-                    job.AiEvaluationError = $"Chyba: {ex.Message}";
-                    LogToConsole($"[Local AI Error] Selhalo manuální hodnocení: {ex.Message}");
+                    job.AiEvaluationError = $"Error: {ex.Message}";
+                    LogToConsole($"[Local AI Error] Manual evaluation failed: {ex.Message}");
                 }
                 finally
                 {
-                    // Vypnutí animace načítání (samotný objekt už má případně Evaluation nastaveno z vnitřku RunLocalAiWorkflowAsync)
                     job.IsAiEvaluating = false;
                 }
             }

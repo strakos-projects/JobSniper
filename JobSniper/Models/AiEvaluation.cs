@@ -15,6 +15,8 @@ namespace JobSniper.Models
 
     public class AiEvaluation
     {
+        public string EvaluatedJobDescription { get; set; }
+
         // NOVÉ METRIKY
         public int RawHrScore { get; set; }
         public int StrategicScore { get; set; }

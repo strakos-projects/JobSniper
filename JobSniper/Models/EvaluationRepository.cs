@@ -62,13 +62,17 @@ namespace JobSniper.Models
                 Save(); 
             }
         }
-        public void AddOrUpdateEvaluation(string jobId, string rawAiText)
+        public void AddOrUpdateEvaluation(string jobId, string rawAiText, string jobDescription = null)
         {
             if (string.IsNullOrEmpty(jobId) || string.IsNullOrWhiteSpace(rawAiText)) return;
             var parsedEval = AiEvaluation.ParseFromAiOutput(rawAiText);
 
             if (parsedEval != null)
             {
+                // Pokud jsme předali zdrojový text inzerátu, uložíme ho do objektu
+                if (!string.IsNullOrEmpty(jobDescription))
+                    parsedEval.EvaluatedJobDescription = jobDescription;
+
                 _evaluations[jobId] = parsedEval;
             }
             else
@@ -78,8 +82,10 @@ namespace JobSniper.Models
                     _evaluations[jobId] = new AiEvaluation();
                 }
                 _evaluations[jobId].FullCoachText = rawAiText;
+                if (!string.IsNullOrEmpty(jobDescription))
+                    _evaluations[jobId].EvaluatedJobDescription = jobDescription;
             }
-            Save(); 
+            Save();
         }
     }
 }

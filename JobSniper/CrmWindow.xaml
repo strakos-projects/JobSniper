@@ -216,7 +216,19 @@
                                             </StackPanel>
 
                                             <TextBlock Text="{x:Static p:Resources.CrmWindow_Ai_CoachDetail}" FontSize="14" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,5"/>
-                                            <TextBlock Name="TxtAiCoach" TextWrapping="Wrap" FontSize="14" Foreground="#4A5568" LineHeight="20"/>
+                                            <TextBlock Name="TxtAiCoach" TextWrapping="Wrap" FontSize="14" Foreground="#4A5568" LineHeight="20" Margin="0,0,0,20"/>
+
+                                            <Expander Header="Source Job Description (Debug View)" Foreground="#7F8C8D" FontWeight="SemiBold" Margin="0,0,0,20">
+                                                <TextBox Name="TxtEvaluatedJobDescription" IsReadOnly="True" Background="#E5E7EB" Foreground="#2C3E50" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="250" Padding="10" Margin="0,5,0,0" FontFamily="Consolas" FontSize="12"/>
+                                            </Expander>
+
+                                            <Button Click="BtnDeleteEvaluation_Click" Content="🗑️ Delete this evaluation" HorizontalAlignment="Right" Background="#E74C3C" Foreground="White" Padding="15,8" BorderThickness="0" Cursor="Hand" FontWeight="Bold">
+                                                <Button.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="4"/>
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
                                         </StackPanel>
                                     </ScrollViewer>
                                 </Grid>
