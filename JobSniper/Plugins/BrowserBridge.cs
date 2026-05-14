@@ -28,9 +28,8 @@ namespace JobSniper.Plugins
         public Action<string, string>? OnSaveEvaluation;
         public Action<string>? OnDeleteEvaluation; // Nový delegát pro smazání
 
-        // NOVÉ: Delegát pro spuštění lokálního AI workflow (předává URL a text inzerátu)
-        public Action<string, string>? OnLocalEvaluationRequested;
-
+        public Func<string, string, object>? OnLocalEvaluationRequested;
+        public Func<string, string, string, string, object>? OnDataReceivedAsync;
         public BrowserBridge(int port = 55055)
         {
             _port = port;
@@ -143,30 +142,53 @@ namespace JobSniper.Plugins
                         SendJsonResponse(response, 200, "{\"status\":\"success\"}");
                     }
                     // ROUTA 4 (NOVÁ): Spuštění lokálního AI (LM Studio)
+                    // ROUTA 4: Spuštění lokálního AI (LM Studio)
                     else if (absolutePath.EndsWith("/local-eval"))
                     {
                         string url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "";
                         string text = root.TryGetProperty("text", out var textEl) ? textEl.GetString() ?? "" : "";
 
-                        // Předáme WPF aplikaci, ať workflow spustí asynchronně na pozadí
-                        OnLocalEvaluationRequested?.Invoke(url, text);
+                        if (OnLocalEvaluationRequested != null)
+                        {
+                            object result = OnLocalEvaluationRequested.Invoke(url, text);
+                            string jsonResponse = JsonSerializer.Serialize(result);
 
-                        // Odpovíme prohlížeči hned, že proces začal (aby doplněk nečekal minutu na model)
-                        SendJsonResponse(response, 200, "{\"status\":\"processing\", \"message\":\"Local AI evaluation started.\"}");
+                            // Pokud C# vrátil success: false, pošleme HTTP 400, aby to chytil .catch() v JS
+                            var dictResult = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonResponse);
+                            int statusCode = (dictResult != null && dictResult.ContainsKey("success") && dictResult["success"].GetBoolean() == false) ? 400 : 200;
+
+                            SendJsonResponse(response, statusCode, jsonResponse);
+                        }
+                        else
+                        {
+                            SendJsonResponse(response, 500, "{\"success\":false, \"message\":\"Backend did not handle the request.\"}");
+                        }
                     }
-                    // ROUTA 5: Původní scrapování (Fallback)
+                    // ROUTA 5: Původní scrapování (Fallback) a Tvorba složek
                     else
                     {
-                        var args = new JobDataEventArgs
-                        {
-                            Url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "",
-                            JobText = root.TryGetProperty("text", out var textEl) ? textEl.GetString() ?? "" : "",
-                            CompanyName = root.TryGetProperty("company", out var compEl) ? compEl.GetString() ?? "" : "",
-                            JobTitle = root.TryGetProperty("title", out var titleEl) ? titleEl.GetString() ?? "" : ""
-                        };
+                        string url = root.TryGetProperty("url", out var urlEl) ? urlEl.GetString() ?? "" : "";
+                        string text = root.TryGetProperty("text", out var textEl) ? textEl.GetString() ?? "" : "";
+                        string company = root.TryGetProperty("company", out var compEl) ? compEl.GetString() ?? "" : "";
+                        string title = root.TryGetProperty("title", out var titleEl) ? titleEl.GetString() ?? "" : "";
 
-                        OnDataReceived?.Invoke(this, args);
-                        SendJsonResponse(response, 200, "{\"status\":\"success\"}");
+                        if (OnDataReceivedAsync != null)
+                        {
+                            object result = OnDataReceivedAsync.Invoke(url, text, company, title);
+                            string jsonResponse = JsonSerializer.Serialize(result);
+
+                            var dictResult = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonResponse);
+                            int statusCode = (dictResult != null && dictResult.ContainsKey("success") && dictResult["success"].GetBoolean() == false) ? 400 : 200;
+
+                            SendJsonResponse(response, statusCode, jsonResponse);
+                        }
+                        else
+                        {
+                            // Původní fallback pro jistotu
+                            var args = new JobDataEventArgs { Url = url, JobText = text, CompanyName = company, JobTitle = title };
+                            OnDataReceived?.Invoke(this, args);
+                            SendJsonResponse(response, 200, "{\"success\":true}");
+                        }
                     }
                 }
                 catch (Exception ex)

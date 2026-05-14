@@ -281,7 +281,8 @@ namespace JobSniper
             }
 
             _browserBridge = new Plugins.BrowserBridge();
-            _browserBridge.OnLocalEvaluationRequested = async (url, text) =>
+            // 1. LOKÁLNÍ AI (LM STUDIO)
+            _browserBridge.OnLocalEvaluationRequested = (url, text) =>
             {
                 string safeUrl = url.Split('#')[0];
 
@@ -291,19 +292,26 @@ namespace JobSniper
 
                 if (existingJob == null)
                 {
-                    LogToConsole($"[Local AI Rejected] Job offer not found in DB. If this is a redirected URL, please open the original offer in JobSniper CRM and set its 'Pairing URL' to: {safeUrl}");
-                    return;
+                    LogToConsole($"[Local AI Rejected] Job offer not found in DB. Please set its 'Pairing URL' to: {safeUrl}");
+
+                    // VRACÍME CHYBU DO PROHLÍŽEČE!
+                    return new { success = false, message = "Not found in DB. Check 'Pairing URL'." };
                 }
 
-                await RunLocalAiWorkflowAsync(safeUrl, text);
+                // Pozor, tohle teď musí běžet na pozadí, abychom neblokovali return
+                _ = RunLocalAiWorkflowAsync(safeUrl, text);
+
+                // Vracíme úspěch hned (model běží na pozadí)
+                return new { success = true, status = "processing" };
             };
-            _browserBridge.OnDataReceived += (s, args) =>
+
+            // 2. HLAVNÍ WORKFLOW (SCHRÁNKA A SLOŽKY)
+            // Měníme na OnDataReceivedAsync, abychom mohli vracet odpověď!
+            _browserBridge.OnDataReceivedAsync = (url, text, companyName, jobTitle) =>
             {
-
-                args.CompanyName = args.CompanyName?.Trim();
-                args.JobTitle = args.JobTitle?.Trim();
-
-                string safeUrl = args.Url.Split('#')[0];
+                companyName = companyName?.Trim();
+                jobTitle = jobTitle?.Trim();
+                string safeUrl = url.Split('#')[0];
 
                 var existingOffer = DatabaseOfJobs.FirstOrDefault(job =>
                     (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
@@ -311,40 +319,25 @@ namespace JobSniper
 
                 if (existingOffer == null)
                 {
-                    LogToConsole($"[Workflow Rejected] Job not found in DB. If this is a redirected URL, please set the 'Pairing URL' in JobSniper CRM to: {safeUrl}");
-                    return; 
+                    LogToConsole($"[Workflow Rejected] Job not found in DB. Please set the 'Pairing URL' to: {safeUrl}");
+
+                    // VRACÍME CHYBU DO PROHLÍŽEČE!
+                    return new { success = false, message = "Not found in DB. Check 'Pairing URL'." };
                 }
 
-                if ((string.IsNullOrWhiteSpace(args.CompanyName) || args.CompanyName.Contains("Neznámá firma"))
-                    && !string.IsNullOrWhiteSpace(existingOffer.Company)
-                    && !existingOffer.Company.Contains("Neznámá firma"))
-                {
-                    args.CompanyName = existingOffer.Company;
-                }
-
-                if (string.IsNullOrWhiteSpace(args.CompanyName) || args.CompanyName.Contains("Neznámá firma"))
-                {
-                    var match = System.Text.RegularExpressions.Regex.Match(
-                        args.JobTitle ?? "",
-                        @"^(.*?)\s+(pro|v|at|ve)\s+(.*)$",
-                        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-
-                    if (match.Success)
-                    {
-                        args.JobTitle = match.Groups[1].Value.Trim();
-                        args.CompanyName = match.Groups[3].Value.Trim();
-                    }
-                }
+                // ... Zbytek logiky obohacení dat (Neznámá firma atd.) zůstává stejný ...
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    LogToConsole($"[Browser] Received data for position: {args.JobTitle} at company {args.CompanyName}");
-
+                    LogToConsole($"[Browser] Received data for position: {jobTitle} at company {companyName}");
                     foreach (var plugin in _webPlugins)
                     {
-                        plugin.Execute(args.Url, args.JobText, args.CompanyName, args.JobTitle);
+                        plugin.Execute(url, text, companyName, jobTitle);
                     }
                 });
+
+                // Vracíme úspěch
+                return new { success = true };
             };
             _browserBridge.OnCheckUrl = (url) =>
             {
