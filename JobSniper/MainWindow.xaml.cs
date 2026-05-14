@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -206,7 +207,7 @@ namespace JobSniper
             try
             {
                 LogToConsole("[Local AI] Starting evaluation pipeline...");
-                string cleanUrl = CleanJobUrl(jobUrl);
+                string safeUrl = jobUrl.Split('#')[0];
                 // 1. Load private Master CV (dynamically from settings)
                 string privateCvPath = _aiConfig.MasterCvPath;
 
@@ -227,7 +228,7 @@ namespace JobSniper
                 pipeline.AddStep(new ExtractKeywordsStep());
                 pipeline.AddStep(new EvaluateChancesStep());
 
-                var result = await pipeline.RunPipelineAsync(cleanUrl, jobDescription, masterCv);
+                var result = await pipeline.RunPipelineAsync(safeUrl, jobDescription, masterCv);
                 
 
                 // 3. Save result to Database (Must be on UI Thread)
@@ -235,11 +236,12 @@ namespace JobSniper
                 {
                     if (string.IsNullOrWhiteSpace(result.JobUrl)) return;
 
-                    string cleanUrl = CleanJobUrl(result.JobUrl);
+                    string safeUrl = result.JobUrl.Split('#')[0];
+                    Debug.WriteLine($"Pipeline completed for URL: {safeUrl} with evaluation: {result.FinalEvaluation}");
 
                     var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
-                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
-                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(safeUrl)));
 
                     if (existingJob != null)
                     {
@@ -252,7 +254,7 @@ namespace JobSniper
                     }
                     else
                     {
-                        LogToConsole($"[Local AI Warning] Received evaluation for unknown URL: {cleanUrl}");
+                        LogToConsole($"[Local AI Warning] Received evaluation for unknown URL: {safeUrl}");
                     }
                 });
             }
@@ -261,40 +263,7 @@ namespace JobSniper
                 LogToConsole($"[Local AI Error] Workflow failed: {ex.Message}");
             }
         }
-        private string CleanJobUrl(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url)) return url;
-
-            // 1. Odstraníme tvůj interní hash z Chrome extenze
-            string cleanUrl = url.Split('#')[0];
-
-            int qMarkIndex = cleanUrl.IndexOf('?');
-            if (qMarkIndex < 0) return cleanUrl; // URL nemá žádné parametry, je už čistá
-
-            string baseUrl = cleanUrl.Substring(0, qMarkIndex);
-            string queryString = cleanUrl.Substring(qMarkIndex + 1);
-
-            // 2. Blacklist sledovacího balastu (můžeš sem kdykoliv dopsat další)
-            var trackers = new[] { "utm_source", "utm_medium", "utm_campaign", "impressionid", "rps", "searchid", "gclid" };
-
-            // 3. Vyfiltrujeme balast, ale zachováme důležité věci jako 'id='
-            var validParams = queryString.Split('&')
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Where(p =>
-                {
-                    string key = p.Split('=')[0].ToLower();
-                    return !trackers.Contains(key);
-                })
-                .ToList();
-
-            // 4. Pokud zbyly nějaké validní parametry, složíme URL bezpečně zpět
-            if (validParams.Any())
-            {
-                return baseUrl + "?" + string.Join("&", validParams);
-            }
-
-            return baseUrl;
-        }
+        
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             // ---- Load Web Plugins and start the server ----
@@ -314,45 +283,47 @@ namespace JobSniper
             _browserBridge = new Plugins.BrowserBridge();
             _browserBridge.OnLocalEvaluationRequested = async (url, text) =>
             {
-                // Spustí se asynchronně mimo hlavní vlákno, takže GUI nezamrzne
-                await RunLocalAiWorkflowAsync(url, text);
+                string safeUrl = url.Split('#')[0];
+
+                var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
+                    (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+                    (job.Url != null && job.Url.StartsWith(safeUrl)));
+
+                if (existingJob == null)
+                {
+                    LogToConsole($"[Local AI Rejected] Job offer not found in DB. If this is a redirected URL, please open the original offer in JobSniper CRM and set its 'Pairing URL' to: {safeUrl}");
+                    return;
+                }
+
+                await RunLocalAiWorkflowAsync(safeUrl, text);
             };
             _browserBridge.OnDataReceived += (s, args) =>
             {
-                // ==========================================
-                // 0. OČIŠTĚNÍ VSTUPŮ (Sychr proti mezerám a enterům)
-                // ==========================================
+
                 args.CompanyName = args.CompanyName?.Trim();
                 args.JobTitle = args.JobTitle?.Trim();
 
-                // K zápisu do DB potřebujeme URL bez našich Chrome # parametrů!
-                
-                string cleanUrl = CleanJobUrl(args.Url);
+                string safeUrl = args.Url.Split('#')[0];
 
-                // ==========================================
-                // 1. DATA ENRICHMENT (Nyní s čistou URL)
-                // ==========================================
                 var existingOffer = DatabaseOfJobs.FirstOrDefault(job =>
-                    (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
-                    (job.Url != null && job.Url.StartsWith(cleanUrl)));
+                    (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+                    (job.Url != null && job.Url.StartsWith(safeUrl)));
 
-                if (existingOffer != null)
+                if (existingOffer == null)
                 {
-                    // Používáme Contains místo ==, kdyby prohlížeč poslal "Neznámá firma "
-                    if ((string.IsNullOrWhiteSpace(args.CompanyName) || args.CompanyName.Contains("Neznámá firma"))
-                        && !string.IsNullOrWhiteSpace(existingOffer.Company)
-                        && !existingOffer.Company.Contains("Neznámá firma"))
-                    {
-                        args.CompanyName = existingOffer.Company;
-                    }
+                    LogToConsole($"[Workflow Rejected] Job not found in DB. If this is a redirected URL, please set the 'Pairing URL' in JobSniper CRM to: {safeUrl}");
+                    return; 
                 }
 
-                // ==========================================
-                // 2. CHYTRÝ FALLBACK (Pokud DB nepomohla)
-                // ==========================================
+                if ((string.IsNullOrWhiteSpace(args.CompanyName) || args.CompanyName.Contains("Neznámá firma"))
+                    && !string.IsNullOrWhiteSpace(existingOffer.Company)
+                    && !existingOffer.Company.Contains("Neznámá firma"))
+                {
+                    args.CompanyName = existingOffer.Company;
+                }
+
                 if (string.IsNullOrWhiteSpace(args.CompanyName) || args.CompanyName.Contains("Neznámá firma"))
                 {
-                    // Přidán RegexOptions.Singleline, kdyby v titulku byl schovaný enter (\n)
                     var match = System.Text.RegularExpressions.Regex.Match(
                         args.JobTitle ?? "",
                         @"^(.*?)\s+(pro|v|at|ve)\s+(.*)$",
@@ -365,36 +336,28 @@ namespace JobSniper
                     }
                 }
 
-                // ==========================================
-                // 3. SPUŠTĚNÍ UI A PLUGINŮ
-                // ==========================================
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     LogToConsole($"[Browser] Received data for position: {args.JobTitle} at company {args.CompanyName}");
 
                     foreach (var plugin in _webPlugins)
                     {
-                        // Do pluginu posíláme originální args.Url (obsahuje #action=generate),
-                        // ale už s krásně rozsekanou firmou a pozicí!
                         plugin.Execute(args.Url, args.JobText, args.CompanyName, args.JobTitle);
                     }
                 });
             };
-            // 2. NOVÁ LOGIKA: Blesková a bezpečná kontrola URL
-            // 2. NOVÁ LOGIKA: Blesková kontrola včetně vrácení existujícího hodnocení
-            // 2. NOVÁ LOGIKA: Blesková kontrola včetně vrácení existujícího hodnocení
             _browserBridge.OnCheckUrl = (url) =>
             {
+                Debug.WriteLine("OnCheckUrl: " + url);
                 if (string.IsNullOrWhiteSpace(url)) return new { isMatch = false };
 
-                string cleanUrl = CleanJobUrl(url);
+                string safeUrl = url.Split('#')[0];
 
                 return Application.Current.Dispatcher.Invoke<object>(() =>
                 {
-                    // OPRAVA: Hledáme shodu buď v PairingUrl (pokud existuje) nebo v původní Url
                     var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
-                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
-                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(safeUrl)));
 
                     if (existingJob != null)
                     {
@@ -416,14 +379,13 @@ namespace JobSniper
             {
                 if (string.IsNullOrWhiteSpace(url)) return;
 
-                string cleanUrl = CleanJobUrl(url);
+                string safeUrl = url.Split('#')[0];
 
                 Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    // OPRAVA: Aplikováno i na mazání
                     var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
-                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
-                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(safeUrl)));
 
                     if (existingJob != null)
                     {
@@ -433,29 +395,28 @@ namespace JobSniper
                         LogToConsole($"[AI Agent] Evaluation deleted for job: {existingJob.Title}");
                         CollectionViewSource.GetDefaultView(DatabaseOfJobs).Refresh();
                     }
+                    else
+                    {
+                        LogToConsole($"[Delete Rejected] URL not found: {safeUrl}. Cannot delete evaluation.");
+                    }
                 });
             };
 
-            // 3. NOVÁ LOGIKA: Uložení AI Hodnocení (Asynchronní, nevyblokuje okno)
             _browserBridge.OnSaveEvaluation = (url, evalText) =>
             {
                 if (string.IsNullOrWhiteSpace(url)) return;
 
-                string cleanUrl = CleanJobUrl(url);
+                string safeUrl = url.Split('#')[0];
 
                 Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    // OPRAVA: Aplikováno i na ukládání
                     var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
-                        (job.PairingUrl != null && job.PairingUrl.StartsWith(cleanUrl)) ||
-                        (job.Url != null && job.Url.StartsWith(cleanUrl)));
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(safeUrl)));
 
                     if (existingJob != null)
                     {
-                        // Bezpečné uložení do separátního evaluations.json (přes JobId, které teď bezpečně sedí)
                         _evaluationRepo.AddOrUpdateEvaluation(existingJob.JobId, evalText);
-
-                        // Připnutí objektu do paměti
                         existingJob.Evaluation = _evaluationRepo.GetEvaluation(existingJob.JobId);
 
                         LogToConsole($"[AI Agent] Evaluation successfully saved for job: {existingJob.Title}");
@@ -463,7 +424,7 @@ namespace JobSniper
                     }
                     else
                     {
-                        LogToConsole($"[Warning] Received AI evaluation for unknown URL: {cleanUrl}");
+                        LogToConsole($"[Save Rejected] Cannot save AI evaluation. URL not found. If this is a redirect, please set the 'Pairing URL' in CRM to: {safeUrl}");
                     }
                 });
             };
@@ -964,10 +925,10 @@ namespace JobSniper
                     foreach (var job in newJobs)
                     {
                         job.PortalName = scraper.Name;
-                        string cleanUrl = CleanJobUrl(job.Url);
+                        string safeUrl = job.Url.Split('#')[0];
 
                         var existingJob = DatabaseOfJobs.FirstOrDefault(j =>
-                            (j.Url != null && j.Url.StartsWith(cleanUrl)) ||
+                            (j.Url != null && j.Url.StartsWith(safeUrl)) ||
                             (j.Title == job.Title && j.Company == job.Company)
                         );
 
@@ -978,7 +939,7 @@ namespace JobSniper
                             {
                                 existingJob.Status = 0;
                             }
-                            job.Url = cleanUrl;
+                            job.Url = safeUrl;
 
                             // >>> OPRAVA: Místo GetCompanyReputation voláme novou AssignCrmData
                             AssignCrmData(job);
@@ -988,7 +949,7 @@ namespace JobSniper
                         }
                         else
                         {
-                            job.Url = cleanUrl;
+                            job.Url = safeUrl;
                             if (IsCompanyBlacklisted(job.Company))
                                 job.Status = 3;
 
