@@ -300,26 +300,22 @@ namespace JobSniper
             // 1. LOKÁLNÍ AI (LM STUDIO)
             _browserBridge.OnLocalEvaluationRequested = (url, text) =>
             {
-                //Thread.Sleep(2000);
+                string safeUrl = url.Split('#')[0].TrimEnd('/');
 
-                string safeUrl = url.Split('#')[0];
-
-                var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
-                    (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
-                    (job.Url != null && job.Url.StartsWith(safeUrl)));
+                var existingJob = Application.Current.Dispatcher.Invoke(() =>
+                {
+                    return DatabaseOfJobs.FirstOrDefault(job =>
+                        (job.PairingUrl != null && job.PairingUrl.Contains(safeUrl)) ||
+                        (job.Url != null && job.Url.Contains(safeUrl)));
+                });
 
                 if (existingJob == null)
                 {
-                    LogToConsole($"[Local AI Rejected] Job offer not found in DB. Please set its 'Pairing URL' to: {safeUrl}");
-
-                    // VRACÍME CHYBU DO PROHLÍŽEČE!
-                    return new Dictionary<string, object> { { "success", false }, { "message", "Not found in DB. Check 'Pairing URL'." } };
+                    Application.Current.Dispatcher.Invoke(() => LogToConsole($"[Local AI Rejected] Job offer not found in DB. Please set its 'Pairing URL' to: {safeUrl}"));
+                    return new { success = false, message = "Not found in DB. Check 'Pairing URL'." };
                 }
+                _ = RunLocalAiWorkflowAsync(existingJob.Url, text);
 
-                // Pozor, tohle teď musí běžet na pozadí, abychom neblokovali return
-                _ = RunLocalAiWorkflowAsync(safeUrl, text);
-
-                // Vracíme úspěch hned (model běží na pozadí)
                 return new { success = true, status = "processing" };
             };
 
@@ -330,56 +326,63 @@ namespace JobSniper
                 if (string.IsNullOrWhiteSpace(url))
                 {
                     LogToConsole("[Workflow Rejected] Received a request without a URL! Nothing to pair with.");
-                    return new Dictionary<string, object> { { "success", false }, { "message", "No URL provided." } };
+                    return new { success = false, message = "No URL provided." };
                 }
                 
                 companyName = companyName?.Trim();
                 jobTitle = jobTitle?.Trim();
                 string safeUrl = url.Split('#')[0];
 
-                var existingOffer = DatabaseOfJobs.FirstOrDefault(job =>
-                    (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
-                    (job.Url != null && job.Url.StartsWith(safeUrl)));
+                var existingOffer = Application.Current.Dispatcher.Invoke(() =>
+                {
+                    return DatabaseOfJobs.FirstOrDefault(job =>
+                        (job.PairingUrl != null && job.PairingUrl.Contains(safeUrl)) ||
+                        (job.Url != null && job.Url.Contains(safeUrl)));
+                });
                 if (existingOffer == null)
                 {
-                    LogToConsole($"[Workflow Rejected] Job not found in DB. Please set the 'Pairing URL' to: {safeUrl}");
-                    return new Dictionary<string, object> { { "success", false }, { "message", "Not found in DB. Check 'Pairing URL'." } };
+                    Application.Current.Dispatcher.Invoke(() => LogToConsole($"[Workflow Rejected] Job not found in DB. Please set the 'Pairing URL' to: {safeUrl}"));
+                    return new { success = false, message = "Not found in DB. Check 'Pairing URL'." };
                 }
-                if (string.IsNullOrWhiteSpace(companyName) ||
-    companyName.Trim().Equals("Neznámá firma", StringComparison.OrdinalIgnoreCase) ||
-    companyName.Trim().Equals("Neznama firma", StringComparison.OrdinalIgnoreCase))
-                {
-                    companyName = existingOffer.Company;
-                    LogToConsole("[System] Doplněn chybějící název firmy z lokální DB.");
-                }
-
-                if (string.IsNullOrWhiteSpace(jobTitle))
-                    jobTitle = existingOffer.Title;
-
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    var eval = _evaluationRepo.GetEvaluation(existingOffer.JobId);
-                    if (eval != null && !string.IsNullOrWhiteSpace(eval.EvaluatedJobDescription))
-                    {
-                        text = eval.EvaluatedJobDescription;
-                        LogToConsole("[System] Doplněn chybějící text inzerátu z lokální zálohy hodnocení.");
-                    }
-                }
-                companyName = string.IsNullOrWhiteSpace(companyName) ? "Neznama_Firma" : companyName.Trim();
-                jobTitle = string.IsNullOrWhiteSpace(jobTitle) ? "Neznama_Pozice" : jobTitle.Trim();
-                text = text ?? string.Empty;
-
                 Application.Current.Dispatcher.Invoke(() =>
                 {
+                    companyName = companyName?.Trim();
+                    jobTitle = jobTitle?.Trim();
+
+                    if (string.IsNullOrWhiteSpace(companyName) ||
+                        companyName.Equals("Neznámá firma", StringComparison.OrdinalIgnoreCase) ||
+                        companyName.Equals("Neznama firma", StringComparison.OrdinalIgnoreCase))
+                    {
+                        companyName = existingOffer.Company;
+                        LogToConsole("[System] Doplněn chybějící název firmy z lokální DB.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(jobTitle))
+                        jobTitle = existingOffer.Title;
+
+                    if (string.IsNullOrWhiteSpace(text))
+                    {
+                        var eval = _evaluationRepo.GetEvaluation(existingOffer.JobId);
+                        if (eval != null && !string.IsNullOrWhiteSpace(eval.EvaluatedJobDescription))
+                        {
+                            text = eval.EvaluatedJobDescription;
+                            LogToConsole("[System] Doplněn chybějící text inzerátu z lokální zálohy hodnocení.");
+                        }
+                    }
+
+                    companyName = string.IsNullOrWhiteSpace(companyName) ? "Neznama_Firma" : companyName;
+                    jobTitle = string.IsNullOrWhiteSpace(jobTitle) ? "Neznama_Pozice" : jobTitle;
+                    text = text ?? string.Empty;
+
                     LogToConsole($"[Browser] Received data for position: {jobTitle} at company {companyName}");
+
                     foreach (var plugin in _webPlugins)
                     {
                         plugin.Execute(url, text, companyName, jobTitle);
                     }
                 });
 
-                // Vracíme úspěch
-                return new Dictionary<string, object> { { "success", true } };
+                return new { success = true };
             };
             _browserBridge.OnCheckUrl = (url) =>
             {
