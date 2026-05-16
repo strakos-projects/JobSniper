@@ -284,6 +284,8 @@ namespace JobSniper
             // 1. LOKÁLNÍ AI (LM STUDIO)
             _browserBridge.OnLocalEvaluationRequested = (url, text) =>
             {
+                //Thread.Sleep(2000);
+
                 string safeUrl = url.Split('#')[0];
 
                 var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
@@ -309,6 +311,7 @@ namespace JobSniper
             // Měníme na OnDataReceivedAsync, abychom mohli vracet odpověď!
             _browserBridge.OnDataReceivedAsync = (url, text, companyName, jobTitle) =>
             {
+                //Thread.Sleep(2000);
                 companyName = companyName?.Trim();
                 jobTitle = jobTitle?.Trim();
                 string safeUrl = url.Split('#')[0];

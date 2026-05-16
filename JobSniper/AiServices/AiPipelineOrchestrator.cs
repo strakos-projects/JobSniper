@@ -33,6 +33,11 @@ namespace JobSniper.AiServices
 
             foreach (var step in _steps)
             {
+                if (context.IsHardRequirementFailed)
+                {
+                    Console.WriteLine($"[Pipeline] Interrupting execution. Step '{step.StepName}' was skipped due to Hard Requirements failure.");
+                    break; // Zatáhnutí za ruční brzdu
+                }
                 Console.WriteLine($"[Pipeline] Executing step: {step.StepName}");
                 await step.ExecuteAsync(context, _aiClient);
             }

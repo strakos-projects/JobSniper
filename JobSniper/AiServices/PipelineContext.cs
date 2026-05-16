@@ -11,5 +11,6 @@ namespace JobSniper.AiServices
         // Chain of Thought intermediate results
         public List<string> ExtractedRequirements { get; set; } = new();
         public string FinalEvaluation { get; set; } = string.Empty;
+        public bool IsHardRequirementFailed { get; set; } = false;
     }
 }
