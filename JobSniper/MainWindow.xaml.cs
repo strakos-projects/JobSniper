@@ -300,7 +300,7 @@ namespace JobSniper
             // 1. LOKÁLNÍ AI (LM STUDIO)
             _browserBridge.OnLocalEvaluationRequested = (url, text) =>
             {
-                string safeUrl = url.Split('#')[0].TrimEnd('/');
+                string safeUrl = url.Split('#')[0];
 
                 var existingJob = Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -311,6 +311,7 @@ namespace JobSniper
 
                 if (existingJob == null)
                 {
+                    Application.Current.Dispatcher.Invoke(() => LogToConsole($"errorno 1"));
                     Application.Current.Dispatcher.Invoke(() => LogToConsole($"[Local AI Rejected] Job offer not found in DB. Please set its 'Pairing URL' to: {safeUrl}"));
                     return new { success = false, message = "Not found in DB. Check 'Pairing URL'." };
                 }
@@ -955,60 +956,154 @@ namespace JobSniper
                     LogToConsole($"[Chyba] Během scrapování došlo k chybě: {ex.Message}");
                     continue;
                 }
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    int addedCount = 0;
-                    int dupCount = 0;
-
-                    foreach (var job in newJobs)
+                    /*Application.Current.Dispatcher.Invoke(() =>
                     {
-                        job.PortalName = scraper.Name;
-                        string safeUrl = job.Url.Split('#')[0];
+                        int addedCount = 0;
+                        int dupCount = 0;
 
-                        var existingJob = DatabaseOfJobs.FirstOrDefault(j =>
-                            (j.Url != null && j.Url.StartsWith(safeUrl)) ||
-                            (j.Title == job.Title && j.Company == job.Company)
-                        );
-
-                        if (existingJob != null)
+                        foreach (var job in newJobs)
                         {
-                            existingJob.LastSeen = DateTime.Now;
-                            if (existingJob.Status == 4)
+
+                            job.PortalName = scraper.Name;
+                            string safeUrl = job.Url.Split('#')[0];
+
+                            var existingJob = DatabaseOfJobs.FirstOrDefault(j =>
+                                (j.Url != null && j.Url.StartsWith(safeUrl)) ||
+                                (j.Title == job.Title && j.Company == job.Company)
+                            );
+
+                            if (existingJob != null)
                             {
-                                existingJob.Status = 0;
+                                existingJob.LastSeen = DateTime.Now;
+                                if (existingJob.Status == 4)
+                                {
+                                    existingJob.Status = 0;
+                                }
+                                job.Url = safeUrl;
+                                AssignCrmData(job);
+
+                                SessionDuplicates.Add(job);
+                                dupCount++;
                             }
-                            job.Url = safeUrl;
+                            else
+                            {
+                                job.Url = safeUrl;
+                                if (IsCompanyBlacklisted(job.Company))
+                                    job.Status = 3;
+                                AssignCrmData(job);
 
-                            // >>> OPRAVA: Místo GetCompanyReputation voláme novou AssignCrmData
-                            AssignCrmData(job);
-
-                            SessionDuplicates.Add(job);
-                            dupCount++;
+                                DatabaseOfJobs.Add(job);
+                                addedCount++;
+                            }
                         }
-                        else
+                        UpdateDashboardCounters();
+                        SaveJobs();
+                        UpdateKeywordChips();
+
+                        if (addedCount > 0 || dupCount > 0)
+                            LogToConsole($"[System] Saved {addedCount} new offers. Ignored {dupCount} duplicates.");
+                    });
+
+
+                    try { await Task.Delay(3000, token); } catch (TaskCanceledException) { break; }*/
+                    // -------------------------------------------------------------
+                    // OPRAVA: Těžká normalizace a AI evaluace se přesouvá na pozadí
+                    // -------------------------------------------------------------
+
+                    // 1. Zkopírujeme si existující kolekci, abychom v ní mohli bezpečně hledat 
+                    // na pozadí bez zamknutí UI vlákna.
+                    var dbJobsSnapshot = DatabaseOfJobs.ToList();
+
+                    await Task.Run(() =>
+                    {
+                        int total = newJobs.Count;
+                        if (total == 0) return;
+
+                        int nextThreshold = 10;
+                        int addedCount = 0;
+                        int dupCount = 0;
+
+                        // Kolekce pro hromadné odeslání do UI vlákna
+                        var newlyAddedJobs = new List<JobOffer>();
+                        var newlyAddedDuplicates = new List<JobOffer>();
+                        var jobsToUpdate = new List<Action>(); // Změny existujících položek (už bindovaných do UI)
+
+                        for (int i = 0; i < total; i++)
                         {
-                            job.Url = safeUrl;
-                            if (IsCompanyBlacklisted(job.Company))
-                                job.Status = 3;
+                            // Ochrana před případným přerušením i během zpracování (Cancel)
+                            if (token.IsCancellationRequested) break;
 
-                            // >>> OPRAVA: Místo GetCompanyReputation voláme novou AssignCrmData    
-                            AssignCrmData(job);
+                            var job = newJobs[i];
+                            job.PortalName = scraper.Name;
+                            string safeUrl = job.Url.Split('#')[0];
 
-                            DatabaseOfJobs.Add(job);
-                            addedCount++;
+                            var existingJob = dbJobsSnapshot.FirstOrDefault(j =>
+                                (j.Url != null && j.Url.StartsWith(safeUrl)) ||
+                                (j.Title == job.Title && j.Company == job.Company));
+
+                            if (existingJob == null)
+                            {
+                                existingJob = newlyAddedJobs.FirstOrDefault(j =>
+                                    (j.Url != null && j.Url.StartsWith(safeUrl)) ||
+                                    (j.Title == job.Title && j.Company == job.Company));
+                            }
+
+                            if (existingJob != null)
+                            {
+                                jobsToUpdate.Add(() =>
+                                {
+                                    existingJob.LastSeen = DateTime.Now;
+                                    if (existingJob.Status == 4) existingJob.Status = 0;
+                                });
+
+                                job.Url = safeUrl;
+
+                                AssignCrmData(job);
+
+                                newlyAddedDuplicates.Add(job);
+                                dupCount++;
+                            }
+                            else
+                            {
+                                job.Url = safeUrl;
+
+                                if (IsCompanyBlacklisted(job.Company))
+                                    job.Status = 3;
+
+                                AssignCrmData(job);
+
+                                newlyAddedJobs.Add(job);
+                                addedCount++;
+                            }
+
+                            // --- PROGRESS REPORTING ---
+                            int currentPercent = (i + 1) * 100 / total;
+                            if (currentPercent >= nextThreshold)
+                            {
+                                LogToConsole($"[System] Normalizace dat a napojování CRM: {nextThreshold}% ({i + 1}/{total})");
+                                nextThreshold += 10;
+                            }
                         }
-                    }
-                    UpdateDashboardCounters();
-                    SaveJobs();
-                    UpdateKeywordChips();
 
-                    if (addedCount > 0 || dupCount > 0)
-                        LogToConsole($"[System] Saved {addedCount} new offers. Ignored {dupCount} duplicates.");
-                });
+                        // 2. Teprve nyní (a pouze jednou) se vrátíme na UI vlákno a provedeme čisté vložení
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            // Změny už bindovaných objektů
+                            foreach (var action in jobsToUpdate) action.Invoke();
 
-                //await Task.Delay(3000);
-                try { await Task.Delay(3000, token); } catch (TaskCanceledException) { break; }
-            }
+                            // Hromadné vložení
+                            foreach (var duplicate in newlyAddedDuplicates) SessionDuplicates.Add(duplicate);
+                            foreach (var newJob in newlyAddedJobs) DatabaseOfJobs.Add(newJob);
+
+                            UpdateDashboardCounters();
+                            SaveJobs();
+                            UpdateKeywordChips();
+
+                            if (addedCount > 0 || dupCount > 0)
+                                LogToConsole($"[System] Saved {addedCount} new offers. Ignored {dupCount} duplicates.");
+                        });
+                    });
+                }
 
             Application.Current.Dispatcher.Invoke(() =>
             {
