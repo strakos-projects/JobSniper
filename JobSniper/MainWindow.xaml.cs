@@ -23,6 +23,8 @@ namespace JobSniper
 {
     public partial class MainWindow : Window
     {
+
+        private string _cachedProfileSummary = null;
         private System.Windows.Threading.DispatcherTimer _searchTimer;
         private List<Plugins.IWebActionPlugin> _webPlugins = new List<Plugins.IWebActionPlugin>();
         private Plugins.BrowserBridge _browserBridge;
@@ -224,11 +226,16 @@ namespace JobSniper
 
                 var pipeline = new AiPipelineOrchestrator(localAi);
 
-                // Zbytek kódu zůstává beze změny...
+                pipeline.AddStep(new AnalyzeCandidateProfileStep());
                 pipeline.AddStep(new ExtractKeywordsStep());
+                pipeline.AddStep(new EvaluateHardRequirementsStep());
                 pipeline.AddStep(new EvaluateChancesStep());
 
-                var result = await pipeline.RunPipelineAsync(safeUrl, jobDescription, masterCv);
+                // FIX: Předáváme uloženou cache do orchestrátoru
+                var result = await pipeline.RunPipelineAsync(safeUrl, jobDescription, masterCv, _cachedProfileSummary);
+
+                // FIX: Po doběhu si vygenerovaný profil uložíme pro další inzeráty
+                _cachedProfileSummary = result.CandidateProfileSummary;
                 
 
                 // 3. Save result to Database (Must be on UI Thread)

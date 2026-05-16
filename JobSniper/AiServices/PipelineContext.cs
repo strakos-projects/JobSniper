@@ -12,5 +12,7 @@ namespace JobSniper.AiServices
         public List<string> ExtractedRequirements { get; set; } = new();
         public string FinalEvaluation { get; set; } = string.Empty;
         public bool IsHardRequirementFailed { get; set; } = false;
+
+        public string CandidateProfileSummary { get; set; }
     }
 }
