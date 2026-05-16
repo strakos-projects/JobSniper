@@ -65,7 +65,8 @@ namespace JobSniper.Models
         public void AddOrUpdateEvaluation(string jobId, string rawAiText, string jobDescription = null)
         {
             if (string.IsNullOrEmpty(jobId) || string.IsNullOrWhiteSpace(rawAiText)) return;
-            var parsedEval = AiEvaluation.ParseFromAiOutput(rawAiText);
+            string cleanJson = JobSniper.AiServices.JsonSanitizer.CleanJsonOutput(rawAiText);
+            var parsedEval = AiEvaluation.ParseFromAiOutput(cleanJson);
 
             if (parsedEval != null)
             {

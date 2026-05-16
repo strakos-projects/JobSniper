@@ -1,70 +1,105 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace JobSniper.AiServices.Steps
 {
     public class EvaluateChancesStep : IPipelineStep
     {
-        public string StepName => "Evaluating candidate chances based on CV";
+        public string StepName => "Evaluating candidate chances based on Reality Match";
 
         public async Task ExecuteAsync(PipelineContext context, IAiClient aiClient)
         {
-            string requirementsList = string.Join(", ", context.ExtractedRequirements);
+            string requirementsList = context.ExtractedRequirements != null && context.ExtractedRequirements.Count > 0
+                ? string.Join(", ", context.ExtractedRequirements)
+                : "None extracted";
 
-            string systemPrompt = $$"""
-            You are a highly cynical career coach evaluating a candidate. 
+            string systemPrompt = """
+            You are a ruthless, analytical HR ATS (Applicant Tracking System) simulator. Your goal is to score realistic chances, not to flatter the candidate.
+
+            PROCESS (CHAIN OF THOUGHT):
+            1. PreAnalysis: Objectively compare the Job Requirements vs Candidate Reality.
+            2. Assign scores STRICTLY following this hierarchical rule-set (evaluate from top to bottom, stop at the first match):
+
+            HIERARCHICAL EVALUATION RULES:
+            RULE 1 (FATAL BLOCKER): If the job requires a specific physical license (e.g., Security Guard, Forklift) and it is missing from Candidate Reality -> RawHrScore=0, StrategicScore=0, Strategy='Ignore'.
+            RULE 2 (TECH STACK MISMATCH): If it's a software/IT job, EXPLICITLY compare languages. If Job wants Python/Java/C++ and Candidate has C#/.NET -> RawHrScore=10-20, StrategicScore=30-45. Strategy='B2B_Pitch' or 'Ignore'. (Even if the candidate is a genius, traditional HR will block the wrong language).
+            RULE 3 (APTITUDE ANOMALY): If Tech Stack MATCHES, but candidate lacks formal education/degree, AND they have verifiable complex projects matching the job's architecture -> RawHrScore=20-40, StrategicScore=60-80. Strategy='Pitch_Potential'.
+            RULE 4 (EXACT MATCH): Domains, tech stack, and education all match perfectly -> RawHrScore=70-90, StrategicScore=85-100. Strategy='Standard'.
             
-            CANDIDATE'S REALITY:
-            {{context.CandidateProfileSummary}}
-
-            YOU MUST STRICTLY FOLLOW THIS EVALUATION MATRIX:
-
-            1. LEGAL BLOCKERS (KILL SWITCH):
-            Is the candidate missing a strict legal/safety license specifically required by the job? -> RawHrScore=0, StrategicScore=0, Strategy='Ignore'.
-
-            2. DOMAIN MISMATCH (AUTO-REJECT):
-            Is this job in a completely unrelated field to the candidate's core experience (e.g., Candidate is a builder, job is Senior Banker)? -> RawHrScore=0-5, StrategicScore=0-5, Strategy='Ignore'. DO NOT invent transferable skills.
-
-            3. CORPORATE REALITY VS. EDUCATION:
-            Is this a strict corporate/bureaucratic role that legally or culturally demands a formal degree the candidate lacks? 
-            -> RawHrScore=10-20. StrategicScore can be higher ONLY if their self-taught tech/hard skills match perfectly. Strategy='Standard' or 'B2B_Pitch'.
-
-            4. OVERQUALIFIED / MANUAL ROLES:
-            Is the candidate severely overqualified for this lower-tier or manual role based on their advanced skills?
-            -> RawHrScore=50-80, StrategicScore=80-95. Strategy='DumbDown' (CV must be stripped of advanced skills).
-
-            5. GOOD MATCH:
-            Domains match, education aligns or is compensated by strong portfolio.
-            -> RawHrScore=70-90, StrategicScore=85-100. Strategy='Standard'.
-
-            Respond ONLY with a valid JSON block. Evaluate "PreAnalysis" first:
+            EXPECTED OUTPUT FORMAT (Strict JSON ONLY):
             {
-                "PreAnalysis": "(Evaluate DOMAIN MATCH first based on Candidate's Reality vs Job. Analyze corporate strictness and formal education gaps.)",
-                "RawHrScore": (int 0-100),
-                "StrategicScore": (int 0-100),
-                "OverqualifiedRisk": (int 0-10),
-                "UnderqualifiedRisk": (int 0-10),
-                "HiddenRole": "(string)",
-                "RecommendedCvCategory": (int 1-4),
-                "Strategy": "Standard" | "DumbDown" | "B2B_Pitch" | "Ignore",
-                "StrategyReasoning": "(short explanation of the decision)",
-                "GoNoGo": true/false,
-                "RedFlags": ["flag1", "flag2"]
+                "PreAnalysis": "Candidate has background in X. Job demands Y. Formal education is missing but demonstrated adaptability...",
+                "RawHrScore": 15,
+                "StrategicScore": 40,
+                "OverqualifiedRisk": 2,
+                "UnderqualifiedRisk": 8,
+                "HiddenRole": "Junior Alternative",
+                "RecommendedCvCategory": 3,
+                "Strategy": "Pitch_Potential",
+                "StrategyReasoning": "Lacks domain experience, but high cognitive capacity matches the employer's request for logical thinking.",
+                "GoNoGo": false,
+                "RedFlags": ["Missing formal degree"]
             }
             """;
+            string userPrompt = $$"""
+            === JOB REALITY ===
+            {{context.JobRealitySummary}}
 
-            // FIX: Přidán kompletní inzerát, aby matice výše dokázala detekovat obor (Finance/Reality atd.)
-            string userPrompt = $"""
-            === ORIGINAL JOB ADVERTISEMENT ===
-            {context.JobDescription}
+            === REQUIRED JOB TECH STACK ===
+            {{context.JobTechStack}}
 
-            === EXTRACTED KEY REQUIREMENTS ===
-            {requirementsList}
+            === HARD REQUIREMENTS ===
+            {{requirementsList}}
 
-            === CANDIDATE CV ===
-            {context.MasterCvContent}
+            === CANDIDATE REALITY (Including their Tech Stack) ===
+            {{context.CandidateProfileSummary}}
+
+            Respond purely with JSON. Start here:
+            {
             """;
 
-            context.FinalEvaluation = await aiClient.GetCompletionAsync(systemPrompt, userPrompt);
+            // 1. Získání odpovědi
+            string rawResponse = await aiClient.GetCompletionAsync(systemPrompt, userPrompt);
+            context.FinalEvaluation = rawResponse;
+
+            // ----------------------------------------------------------------------
+            // DEBUG LOGOVÁNÍ - V PRODUKCI ZAKOMENTOVAT
+            // ----------------------------------------------------------------------
+            try
+            {/*
+                string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AiDebugLogs");
+                Directory.CreateDirectory(logDir);
+
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+                string logFile = Path.Combine(logDir, $"EvaluateChances_{timestamp}.txt");
+
+                string logContent = $"""
+                ======================================================
+                SYSTEM PROMPT
+                ======================================================
+                {systemPrompt}
+
+                ======================================================
+                USER PROMPT
+                ======================================================
+                {userPrompt}
+
+                ======================================================
+                RAW AI RESPONSE
+                ======================================================
+                {rawResponse}
+                """;
+
+                await File.WriteAllTextAsync(logFile, logContent);
+                Console.WriteLine($"[DEBUG] Prompt and response dumped to: {logFile}");
+                */
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG ERROR] Could not write debug log: {ex.Message}");
+            }
+            // ----------------------------------------------------------------------
         }
     }
 }

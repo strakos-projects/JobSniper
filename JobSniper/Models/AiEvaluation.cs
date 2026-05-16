@@ -10,6 +10,7 @@ namespace JobSniper.Models
         Standard,
         DumbDown,
         B2B_Pitch,
+        Pitch_Potential,
         Ignore
     }
 
@@ -34,23 +35,31 @@ namespace JobSniper.Models
 
         public static AiEvaluation ParseFromAiOutput(string rawText)
         {
-            if (string.IsNullOrWhiteSpace(rawText)) return null;
+            if (string.IsNullOrWhiteSpace(rawText))
+            {
+                return new AiEvaluation { FullCoachText = "[Chyba]: Prázdný vstup od AI." };
+            }
 
             int startIndex = rawText.IndexOf('{');
             int endIndex = rawText.LastIndexOf('}');
 
             if (startIndex == -1 || endIndex == -1 || startIndex > endIndex)
             {
-                return new AiEvaluation { FullCoachText = rawText };
+                return new AiEvaluation
+                {
+                    FullCoachText = $"[Kritická chyba parsování]: AI nevrátila žádný validní JSON blok.\n\nPůvodní text:\n{rawText}",
+                    RedFlags = new List<string> { "SYSTEM ERROR: No JSON detected" }
+                };
             }
 
             string jsonPart = rawText.Substring(startIndex, endIndex - startIndex + 1);
-            string textPart = rawText.Substring(0, startIndex).Trim();
+            string textPart = startIndex > 0 ? rawText.Substring(0, startIndex).Trim() : "";
 
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-                Converters = { new JsonStringEnumConverter() }
+                Converters = { new JsonStringEnumConverter() },
+                AllowTrailingCommas = true // Pomáhá, pokud AI udělá čárku navíc na konci pole
             };
 
             try
@@ -58,23 +67,36 @@ namespace JobSniper.Models
                 var evaluation = JsonSerializer.Deserialize<AiEvaluation>(jsonPart, options);
                 if (evaluation != null)
                 {
-                    evaluation.FullCoachText = textPart;
+                    // Pokud je textPart prázdný, uložíme si pro debug celý raw JSON
+                    evaluation.FullCoachText = string.IsNullOrWhiteSpace(textPart) ? rawText : textPart;
                 }
                 return evaluation;
             }
             catch (JsonException ex)
             {
+                // SENIORSKÝ FALLBACK: Chyba propadne až do UI (do CRM)
                 System.Diagnostics.Debug.WriteLine($"JSON Parse Error: {ex.Message}");
-                return new AiEvaluation { FullCoachText = rawText };
+
+                return new AiEvaluation
+                {
+                    // Přesný důvod (např. chybějící Enum) uvidíš přímo v textu posudku
+                    FullCoachText = $"[Chyba deserializace JSONu]:\n{ex.Message}\n\n[INFO pro vývojáře: Zkontroluj, zda AI nevygenerovala hodnotu, která chybí v Enumu (např. Strategy), nebo špatný datový typ.]\n\nPůvodní JSON:\n{jsonPart}",
+
+                    // Umělý RedFlag tě v UI okamžitě praští do očí
+                    RedFlags = new List<string> { "SYSTEM ERROR: AI JSON Parsing Failed" },
+                    RawHrScore = 0,
+                    StrategicScore = 0
+                };
             }
         }
 
         public static AiEvaluation GetDemoPosudek()
         {
+            // ... Tvoje existující demo metoda zůstává nezměněna ...
             return new AiEvaluation
             {
-                RawHrScore = 15, // HR uvidí chybějící VŠ a ostrahu
-                StrategicScore = 85, // Po úpravě CV naprostý fit
+                RawHrScore = 15,
+                StrategicScore = 85,
                 GoNoGo = true,
                 StrategyReasoning = "Firma hledá technika s tahem na branku, zamlč složité C# architektury a prodej se jako analytický dispečer/technik.",
                 OverqualifiedRisk = 9,

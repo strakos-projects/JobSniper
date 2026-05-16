@@ -13,14 +13,14 @@ namespace JobSniper.AiServices.Steps
                 return;
 
             string systemPrompt = """
-            You are a highly analytical HR profiler. Your task is to read a candidate's Master CV and summarize their "Reality" in exactly 3-4 brutal, objective sentences.
-            
-            You MUST extract:
-            1. The candidate's primary domain(s) of actual work experience (e.g., IT, Retail, Security, Finance, Logistics).
-            2. Their highest completed level of formal education (e.g., Primary school, High School, University degree).
-            3. Any extreme anomalies (e.g., "Highly skilled self-taught programmer but formally only has primary education" OR "University degree in Law but only has experience as a barista").
-            
-            Do not flatter the candidate. Be completely objective. Output ONLY the summary text.
+            You are a highly analytical HR data extractor. Your task is to read a candidate's Master CV and extract their factual reality WITHOUT bias.
+
+            CRITICAL INSTRUCTION - FORMAT YOUR OUTPUT EXACTLY LIKE THIS:
+            1. DOMAINS OF EXPERIENCE: [List ALL domains, e.g., Physical Security (8 years), Software Development (3 years)]
+            2. LICENSES & CERTIFICATES: [Extract ALL official licenses, e.g., Professional Security Guard License, First Aid, IT Certifications]
+            3. FORMAL EDUCATION: [State the exact highest formal degree, e.g., Primary School / Základní]
+            4. DOMINANT TECH STACK: [List primary programming languages, e.g., C#, .NET, Next.js. If none, write "None"]
+            5. APTITUDE ANOMALY: [Briefly state if their demonstrated skills exceed their formal education]
             """;
 
             string userPrompt = $"""
