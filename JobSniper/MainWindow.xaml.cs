@@ -327,7 +327,12 @@ namespace JobSniper
             // Měníme na OnDataReceivedAsync, abychom mohli vracet odpověď!
             _browserBridge.OnDataReceivedAsync = (url, text, companyName, jobTitle) =>
             {
-                //Thread.Sleep(2000);
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    LogToConsole("[Workflow Rejected] Received a request without a URL! Nothing to pair with.");
+                    return new Dictionary<string, object> { { "success", false }, { "message", "No URL provided." } };
+                }
+                
                 companyName = companyName?.Trim();
                 jobTitle = jobTitle?.Trim();
                 string safeUrl = url.Split('#')[0];
@@ -335,16 +340,34 @@ namespace JobSniper
                 var existingOffer = DatabaseOfJobs.FirstOrDefault(job =>
                     (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
                     (job.Url != null && job.Url.StartsWith(safeUrl)));
-
                 if (existingOffer == null)
                 {
                     LogToConsole($"[Workflow Rejected] Job not found in DB. Please set the 'Pairing URL' to: {safeUrl}");
-
-                    // VRACÍME CHYBU DO PROHLÍŽEČE!
                     return new Dictionary<string, object> { { "success", false }, { "message", "Not found in DB. Check 'Pairing URL'." } };
                 }
+                if (string.IsNullOrWhiteSpace(companyName) ||
+    companyName.Trim().Equals("Neznámá firma", StringComparison.OrdinalIgnoreCase) ||
+    companyName.Trim().Equals("Neznama firma", StringComparison.OrdinalIgnoreCase))
+                {
+                    companyName = existingOffer.Company;
+                    LogToConsole("[System] Doplněn chybějící název firmy z lokální DB.");
+                }
 
-                // ... Zbytek logiky obohacení dat (Neznámá firma atd.) zůstává stejný ...
+                if (string.IsNullOrWhiteSpace(jobTitle))
+                    jobTitle = existingOffer.Title;
+
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    var eval = _evaluationRepo.GetEvaluation(existingOffer.JobId);
+                    if (eval != null && !string.IsNullOrWhiteSpace(eval.EvaluatedJobDescription))
+                    {
+                        text = eval.EvaluatedJobDescription;
+                        LogToConsole("[System] Doplněn chybějící text inzerátu z lokální zálohy hodnocení.");
+                    }
+                }
+                companyName = string.IsNullOrWhiteSpace(companyName) ? "Neznama_Firma" : companyName.Trim();
+                jobTitle = string.IsNullOrWhiteSpace(jobTitle) ? "Neznama_Pozice" : jobTitle.Trim();
+                text = text ?? string.Empty;
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
