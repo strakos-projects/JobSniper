@@ -18,6 +18,7 @@ namespace JobSniper.Plugins
 
     public class BrowserBridge
     {
+        public Action<string>? OnLogRequested;
         private HttpListener _listener;
         private bool _isRunning = false;
         public readonly int _port;
@@ -112,7 +113,7 @@ namespace JobSniper.Plugins
                     var root = doc.RootElement;
 
                     string absolutePath = request.Url?.AbsolutePath.TrimEnd('/') ?? "";
-
+                    OnLogRequested?.Invoke($"HTTP Request received on path: {absolutePath}");
                     // ROUTA 1: Kontrola URL
                     if (absolutePath.EndsWith("/check-url"))
                     {
@@ -157,10 +158,12 @@ namespace JobSniper.Plugins
                             var dictResult = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonResponse);
                             int statusCode = (dictResult != null && dictResult.ContainsKey("success") && dictResult["success"].GetBoolean() == false) ? 400 : 200;
 
+                            //OnLogRequested?.Invoke($"ROUTA 4.1");
                             SendJsonResponse(response, statusCode, jsonResponse);
                         }
                         else
                         {
+                            //OnLogRequested?.Invoke($"ROUTA 4.2");
                             SendJsonResponse(response, 500, "{\"success\":false, \"message\":\"Backend did not handle the request.\"}");
                         }
                     }
@@ -179,11 +182,12 @@ namespace JobSniper.Plugins
 
                             var dictResult = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonResponse);
                             int statusCode = (dictResult != null && dictResult.ContainsKey("success") && dictResult["success"].GetBoolean() == false) ? 400 : 200;
-
+                            //OnLogRequested?.Invoke($"ROUTA 5.1");
                             SendJsonResponse(response, statusCode, jsonResponse);
                         }
                         else
                         {
+                            //OnLogRequested?.Invoke($"ROUTA 5.2");
                             // Původní fallback pro jistotu
                             var args = new JobDataEventArgs { Url = url, JobText = text, CompanyName = company, JobTitle = title };
                             OnDataReceived?.Invoke(this, args);
@@ -193,6 +197,7 @@ namespace JobSniper.Plugins
                 }
                 catch (Exception ex)
                 {
+                    //OnLogRequested?.Invoke($"ROUTA 6");
                     SendJsonResponse(response, 500, $"{{\"status\":\"error\", \"message\":\"{ex.Message}\"}}");
                 }
             }

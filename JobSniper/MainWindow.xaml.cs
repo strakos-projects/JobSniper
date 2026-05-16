@@ -288,6 +288,15 @@ namespace JobSniper
             }
 
             _browserBridge = new Plugins.BrowserBridge();
+            _browserBridge.OnLogRequested = (message) =>
+            {
+                // Bezpečné přesměrování do UI vlákna
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    // Zavoláš svou existující metodu, která zapisuje do konzole/TextBoxu v UI
+                    LogToConsole(message);
+                });
+            };
             // 1. LOKÁLNÍ AI (LM STUDIO)
             _browserBridge.OnLocalEvaluationRequested = (url, text) =>
             {
@@ -304,7 +313,7 @@ namespace JobSniper
                     LogToConsole($"[Local AI Rejected] Job offer not found in DB. Please set its 'Pairing URL' to: {safeUrl}");
 
                     // VRACÍME CHYBU DO PROHLÍŽEČE!
-                    return new { success = false, message = "Not found in DB. Check 'Pairing URL'." };
+                    return new Dictionary<string, object> { { "success", false }, { "message", "Not found in DB. Check 'Pairing URL'." } };
                 }
 
                 // Pozor, tohle teď musí běžet na pozadí, abychom neblokovali return
@@ -332,7 +341,7 @@ namespace JobSniper
                     LogToConsole($"[Workflow Rejected] Job not found in DB. Please set the 'Pairing URL' to: {safeUrl}");
 
                     // VRACÍME CHYBU DO PROHLÍŽEČE!
-                    return new { success = false, message = "Not found in DB. Check 'Pairing URL'." };
+                    return new Dictionary<string, object> { { "success", false }, { "message", "Not found in DB. Check 'Pairing URL'." } };
                 }
 
                 // ... Zbytek logiky obohacení dat (Neznámá firma atd.) zůstává stejný ...
@@ -347,7 +356,7 @@ namespace JobSniper
                 });
 
                 // Vracíme úspěch
-                return new { success = true };
+                return new Dictionary<string, object> { { "success", true } };
             };
             _browserBridge.OnCheckUrl = (url) =>
             {
