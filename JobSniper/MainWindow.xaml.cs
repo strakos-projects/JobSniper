@@ -1174,11 +1174,89 @@ namespace JobSniper
 
                 //var crmWindow = new CrmWindow(profile, job.Company, isBlacklisted) { Owner = this };
                 //var companyJobs = DatabaseOfJobs.Where(j => j.CrmCompanyId == profile.CrmId).ToList();
-                var companyJobs = DatabaseOfJobs.Where(j =>
+                /*var companyJobs = DatabaseOfJobs.Where(j =>
     j.CrmCompanyId == profile.CrmId ||
     profile.Aliases.Any(a => IsCompanyMatch(a, j.Company)) ||
     IsCompanyMatch(j.Company, job.Company)
-).Distinct().ToList();
+).Distinct().ToList();*/
+                /* System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+                 var companyJobs = DatabaseOfJobs.Where(j =>
+                 {
+                     // 1. Nejrychlejší cesta (O(1)): Inzerát už má reálné CRM ID
+                     bool hasValidId = !string.IsNullOrEmpty(j.CrmCompanyId) && j.CrmCompanyId != "NONE";
+
+                     if (hasValidId)
+                     {
+                         // Pokud má ID, prostě zkontrolujeme, zda patří hledané firmě. 
+                         // Pokud patří jiné firmě (false), rovnou končíme a ušetříme cykly CPU.
+                         return j.CrmCompanyId == profile.CrmId;
+
+                     }
+
+                     // 2. Pomalá cesta (Regex a normalizace):
+                     // Sem se program dostane POUZE v případě, že inzerát je "sirotek"
+                     // (nemá ID nebo má ID "NONE") a zkusíme ho s firmou spárovat textově.
+                     return profile.Aliases.Any(a => IsCompanyMatch(a, j.Company)) ||
+                            IsCompanyMatch(j.Company, job.Company);
+
+                 }).Distinct().ToList();
+                 sw.Stop();
+
+                 // 3. Výpočet statistik pro log
+                 int countWithId = companyJobs.Count(j => !string.IsNullOrEmpty(j.CrmCompanyId) && j.CrmCompanyId != "NONE");
+                 int countWithoutId = companyJobs.Count - countWithId;
+
+                 // 4. Výpis včetně přesného času
+                 LogToConsole($"[CRM Debug] Hledání trvalo: {sw.ElapsedMilliseconds} ms ({sw.ElapsedTicks} ticků CPU). Nalezeno: {companyJobs.Count} inzerátů. Přes ID: {countWithId}, Pomalou (Regex): {countWithoutId}.");
+                 */
+                //System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+
+                // 🚀 EXTRÉMNÍ OPTIMALIZACE 2.0: Předpočítání konstant (provede se jen JEDNOU)
+                string normClickedCompany = NormalizeCompanyName(job.Company);
+                var normAliases = profile.Aliases
+                                         .Select(a => NormalizeCompanyName(a))
+                                         .Where(a => !string.IsNullOrEmpty(a))
+                                         .ToList();
+
+                var companyJobs = DatabaseOfJobs.Where(j =>
+                {
+                    // 1. Rychlá cesta (O(1)): Inzerát má ID
+                    bool hasValidId = !string.IsNullOrEmpty(j.CrmCompanyId) && j.CrmCompanyId != "NONE";
+
+                    if (hasValidId)
+                    {
+                        return j.CrmCompanyId == profile.CrmId;
+                    }
+
+                    // 2. Pomalá cesta (Ale nyní optimalizovaná)
+                    if (string.IsNullOrWhiteSpace(j.Company)) return false;
+
+                    // Znormalizujeme firmu z iterace (to bohužel udělat musíme)
+                    string normJCompany = NormalizeCompanyName(j.Company);
+                    if (string.IsNullOrEmpty(normJCompany)) return false;
+
+                    // Rychlé porovnání s předpočítanými stringy (žádné další volání IsCompanyMatch a Regexů)
+                    // A) Shoda s firmou u zakliknutého inzerátu
+                    if (normJCompany == normClickedCompany || $" {normJCompany} ".Contains($" {normClickedCompany} "))
+                        return true;
+
+                    // B) Shoda s aliasy v CRM
+                    foreach (var nAlias in normAliases)
+                    {
+                        if (normJCompany == nAlias || $" {normJCompany} ".Contains($" {nAlias} "))
+                            return true;
+                    }
+
+                    return false;
+
+                }).Distinct().ToList();
+
+                //sw.Stop();
+
+                // int countWithId = companyJobs.Count(j => !string.IsNullOrEmpty(j.CrmCompanyId) && j.CrmCompanyId != "NONE");
+                // int countWithoutId = companyJobs.Count - countWithId;
+                // LogToConsole($"[CRM Debug] Hledání trvalo: {sw.ElapsedMilliseconds} ms ({sw.ElapsedTicks} ticků CPU). Nalezeno: {companyJobs.Count} inzerátů. Přes ID: {countWithId}, Pomalou (Regex): {countWithoutId}.");
+
                 var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo) { Owner = this };
 
                 crmWindow.OnJobUpdated += () =>
