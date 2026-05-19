@@ -1279,7 +1279,7 @@ namespace JobSniper
                 var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, company)));
 
                 List<string> namesToBlock = profile != null ? profile.Aliases.ToList() : new List<string> { company };
-
+                string targetCrmId = profile?.CrmId;
                 bool blacklistChanged = false;
                 foreach (var name in namesToBlock)
                 {
@@ -1295,7 +1295,15 @@ namespace JobSniper
                 int affected = 0;
                 foreach (var job in DatabaseOfJobs)
                 {
-                    if (namesToBlock.Any(name => IsCompanyMatch(job.Company, name)) && (job.Status == 0 || job.Status == 1 || job.Status == 2))
+                    /*if (namesToBlock.Any(name => IsCompanyMatch(job.Company, name)) && (job.Status == 0 || job.Status == 1 || job.Status == 2))
+                    {
+                        job.Status = 3;
+                        affected++;
+                    }*/
+                    bool isMatch = (targetCrmId != null && job.CrmCompanyId == targetCrmId) ||
+                               namesToBlock.Any(name => IsCompanyMatch(name, job.Company));
+
+                    if (isMatch)
                     {
                         job.Status = 3;
                         affected++;
@@ -1318,6 +1326,7 @@ namespace JobSniper
 
                 var profile = CrmProfiles.FirstOrDefault(p => p.Aliases.Any(a => IsCompanyMatch(a, company)));
                 List<string> namesToUnblock = profile != null ? profile.Aliases.ToList() : new List<string> { company };
+                string targetCrmId = profile?.CrmId;
 
                 bool blacklistChanged = false;
                 foreach (var name in namesToUnblock)
@@ -1331,7 +1340,15 @@ namespace JobSniper
                 int restored = 0;
                 foreach (var job in DatabaseOfJobs.Where(j => j.Status == 3))
                 {
-                    if (namesToUnblock.Any(name => IsCompanyMatch(name, job.Company)))
+                    /*if (namesToUnblock.Any(name => IsCompanyMatch(name, job.Company)))
+                    {
+                        restored++;
+                        job.Status = 0;
+                    }*/
+                    bool isMatch = (targetCrmId != null && job.CrmCompanyId == targetCrmId) ||
+                           namesToUnblock.Any(name => IsCompanyMatch(name, job.Company));
+
+                    if (isMatch)
                     {
                         restored++;
                         job.Status = 0;
