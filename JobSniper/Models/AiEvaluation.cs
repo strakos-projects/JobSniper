@@ -39,9 +39,10 @@ namespace JobSniper.Models
             {
                 return new AiEvaluation { FullCoachText = "[Chyba]: Prázdný vstup od AI." };
             }
+            string cleanJson = JobSniper.AiServices.JsonSanitizer.CleanJsonOutput(rawText);
+            int startIndex = cleanJson.IndexOf('{');
+            int endIndex = cleanJson.LastIndexOf('}');
 
-            int startIndex = rawText.IndexOf('{');
-            int endIndex = rawText.LastIndexOf('}');
 
             if (startIndex == -1 || endIndex == -1 || startIndex > endIndex)
             {
@@ -49,11 +50,12 @@ namespace JobSniper.Models
                 {
                     FullCoachText = $"[Kritická chyba parsování]: AI nevrátila žádný validní JSON blok.\n\nPůvodní text:\n{rawText}",
                     RedFlags = new List<string> { "SYSTEM ERROR: No JSON detected" }
+                    //return new AiEvaluation { FullCoachText = rawText };
                 };
             }
 
-            string jsonPart = rawText.Substring(startIndex, endIndex - startIndex + 1);
-            string textPart = startIndex > 0 ? rawText.Substring(0, startIndex).Trim() : "";
+            string jsonPart = cleanJson.Substring(startIndex, endIndex - startIndex + 1);
+            
 
             var options = new JsonSerializerOptions
             {
@@ -68,7 +70,7 @@ namespace JobSniper.Models
                 if (evaluation != null)
                 {
                     // Pokud je textPart prázdný, uložíme si pro debug celý raw JSON
-                    evaluation.FullCoachText = string.IsNullOrWhiteSpace(textPart) ? rawText : textPart;
+                    evaluation.FullCoachText = rawText;
                 }
                 return evaluation;
             }
