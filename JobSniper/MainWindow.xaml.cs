@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
@@ -19,6 +20,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 namespace JobSniper
 {
     public partial class MainWindow : Window
@@ -34,8 +37,7 @@ namespace JobSniper
         public ObservableCollection<JobOffer> SessionDuplicates { get; set; } = new ObservableCollection<JobOffer>();
         public ObservableCollection<CompanyProfile> CrmProfiles { get; set; } = new ObservableCollection<CompanyProfile>();
         public ObservableCollection<TrackedWord> TrackedKeywords { get; set; } = new ObservableCollection<TrackedWord>();
-
-        private List<string> _myKeywords = new List<string>();
+        private List<KeywordItem> _myKeywords = new List<KeywordItem>();
 
         private Dictionary<string, Type> _availableScrapers = new Dictionary<string, Type>();
         // Paměť pro rychlé hledání reputace
@@ -126,43 +128,67 @@ namespace JobSniper
             // PŘIDÁNO: Načítání spustíme až ve chvíli, kdy už je okno fyzicky vidět na obrazovce
             this.Loaded += MainWindow_Loaded;
         }
-        private void BtnAddKeyword_Click(object sender, RoutedEventArgs e)
+        private void ChkToggleBan_Click(object sender, RoutedEventArgs e)
         {
-            string word = TxtNewKeyword.Text?.Trim().ToLower(); // Vše ukládáme jako malá písmena
-
-            if (!string.IsNullOrEmpty(word) && !_myKeywords.Contains(word))
+            if (sender is CheckBox chk && chk.Tag is KeywordItem kwItem)
             {
-                _myKeywords.Add(word);
+                // IsBanned stav se už v modelu změnil automaticky díky {Binding Mode=TwoWay}
+                // My už jen musíme překreslit štítky (aby zmizely/objevily se v Třídičce) a uložit JSON.
                 SaveKeywords();
-                RefreshKeywordList();
-                UpdateKeywordChips(); // Okamžitě se to projeví i na štítcích v Třídičce
-                TxtNewKeyword.Text = "";
-            }
-        }
-
-        private void BtnDeleteKeyword_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.Tag is string keyword)
-            {
-                _myKeywords.Remove(keyword);
-                SaveKeywords();
-                RefreshKeywordList();
-                UpdateKeywordChips(); // Okamžitě odstraní štítek i z Třídičky
+                UpdateKeywordChips();
             }
         }
         private void LoadKeywords()
         {
             if (File.Exists(keywordsFilePath))
             {
-                _myKeywords = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(keywordsFilePath)) ?? new List<string>();
+                string json = File.ReadAllText(keywordsFilePath);
+                try
+                {
+                    _myKeywords = JsonSerializer.Deserialize<List<KeywordItem>>(json) ?? new List<KeywordItem>();
+                }
+                catch
+                {
+                    // Zpětná kompatibilita: Pokud spadne na starém List<string>, zmigruj ho
+                    var oldFormat = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+                    _myKeywords = oldFormat.Select(k => new KeywordItem { Word = k, IsBanned = false }).ToList();
+                    SaveKeywords();
+                }
             }
             else
             {
-                // Pokud soubor neexistuje, vytvoří se defaultní sada
-                _myKeywords = new List<string> { "php", "senior" };
+                _myKeywords = new List<KeywordItem> { new KeywordItem { Word = "php", IsBanned = false } };
                 SaveKeywords();
             }
             RefreshKeywordList();
+        }
+
+        // 3. Obsluha tlačítek Přidat/Smazat
+        private void BtnAddKeyword_Click(object sender, RoutedEventArgs e)
+        {
+            string word = TxtNewKeyword.Text?.Trim().ToLower();
+            bool isBanned = ChkIsAutoBan.IsChecked == true;
+
+            if (!string.IsNullOrEmpty(word) && !_myKeywords.Any(k => k.Word == word))
+            {
+                _myKeywords.Add(new KeywordItem { Word = word, IsBanned = isBanned });
+                SaveKeywords();
+                RefreshKeywordList();
+                UpdateKeywordChips();
+                TxtNewKeyword.Text = "";
+                ChkIsAutoBan.IsChecked = false; // Reset checkboxu po přidání
+            }
+        }
+
+        private void BtnDeleteKeyword_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is KeywordItem kwItem)
+            {
+                _myKeywords.Remove(kwItem);
+                SaveKeywords();
+                RefreshKeywordList();
+                UpdateKeywordChips();
+            }
         }
         protected override void OnClosed(EventArgs e)
         {
@@ -1067,9 +1093,31 @@ namespace JobSniper
                             {
                                 job.Url = safeUrl;
 
-                                if (IsCompanyBlacklisted(job.Company))
-                                    job.Status = 3;
+                                // --- NOVÁ AUTO-BAN LOGIKA ---
+                                bool isAutoBanned = false;
+                                string triggerWord = "";
 
+                                foreach (var kw in _myKeywords.Where(k => k.IsBanned))
+                                {
+                                    if ((job.Title != null && job.Title.Contains(kw.Word, StringComparison.OrdinalIgnoreCase)) ||
+                                        (job.Company != null && job.Company.Contains(kw.Word, StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        isAutoBanned = true;
+                                        triggerWord = kw.Word;
+                                        break;
+                                    }
+                                }
+
+                                if (isAutoBanned)
+                                {
+                                    job.Status = 2; // 3 = Autoban koš
+                                    LogToConsole($"[Auto-Ban] Job offer '{job.Title}' at '{job.Company}' rejected due to keyword: '{triggerWord}'");
+                                }
+                                else if (IsCompanyBlacklisted(job.Company))
+                                {
+                                    job.Status = 3; // Zapadne do stávající logiky blacklistu firem
+                                    LogToConsole($"[Blacklist] Job offer '{job.Title}' rejected. Company '{job.Company}' is strictly blacklisted.");
+                                }
                                 AssignCrmData(job);
 
                                 newlyAddedJobs.Add(job);
@@ -1807,20 +1855,46 @@ namespace JobSniper
             TrackedKeywords.Clear();
             var inboxJobs = DatabaseOfJobs.Where(j => j.Status == 0).ToList();
 
-            foreach (var kw in _myKeywords)
+            foreach (var kwItem in _myKeywords.Where(k => !k.IsBanned)) // Filtrujeme jen standardní slova
             {
+                string kw = kwItem.Word;
                 int count = inboxJobs.Count(j =>
-                    (j.Title != null && j.Title.ToLower().Contains(kw.ToLower())) ||
-                    (j.Company != null && j.Company.ToLower().Contains(kw.ToLower()))
+                    (j.Title != null && j.Title.Contains(kw, StringComparison.OrdinalIgnoreCase)) ||
+                    (j.Company != null && j.Company.Contains(kw, StringComparison.OrdinalIgnoreCase))
                 );
                 if (count > 0)
-                {
                     TrackedKeywords.Add(new TrackedWord { Keyword = kw, Count = count });
-                }
             }
-
+            ItemsTrackedKeywords.ItemsSource = null;
             ItemsTrackedKeywords.ItemsSource = TrackedKeywords;
         }
+    }
+
+
+public class KeywordItem : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private string _word;
+        public string Word
+        {
+            get => _word;
+            set { _word = value; OnPropertyChanged(); OnPropertyChanged(nameof(DisplayText)); }
+        }
+
+        private bool _isBanned;
+        public bool IsBanned
+        {
+            get => _isBanned;
+            set { _isBanned = value; OnPropertyChanged(); OnPropertyChanged(nameof(DisplayText)); }
+        }
+
+        // Ikona se přidá/odebere automaticky podle stavu IsBanned
+        public string DisplayText => IsBanned ? $"⛔ {Word}" : Word;
     }
     public class TrackedWord
     {
