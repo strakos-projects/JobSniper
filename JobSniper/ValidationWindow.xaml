@@ -1,0 +1,63 @@
+﻿<Window x:Class="JobSniper.ValidationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="JobSniper 🎯 - Kontrola inzerátu" 
+        Height="650" Width="850"
+        WindowStartupLocation="CenterOwner" 
+        Background="#1E1E1E" Foreground="#FFFFFF"
+        FontFamily="Segoe UI">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Kontrola textu inzerátu" FontSize="20" Foreground="#4DB8FF" FontWeight="Bold" Margin="0,0,0,10"/>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Firma: " FontWeight="Bold" Foreground="#AAAAAA"/>
+                <TextBlock x:Name="TxtCompany" Text="Neznámá" Margin="0,0,20,0"/>
+                <TextBlock Text="Pozice: " FontWeight="Bold" Foreground="#AAAAAA"/>
+                <TextBlock x:Name="TxtTitle" Text="Neznámá"/>
+            </StackPanel>
+        </StackPanel>
+
+        <TextBox x:Name="TxtJobAd" Grid.Row="1" 
+                 TextWrapping="Wrap" AcceptsReturn="True" 
+                 VerticalScrollBarVisibility="Auto"
+                 Background="#2D2D2D" Foreground="#D4D4D4"
+                 BorderBrush="#555555" BorderThickness="1"
+                 Padding="10" FontFamily="Consolas" FontSize="14"
+                 TextChanged="TxtJobAd_TextChanged"/>
+
+        <Expander x:Name="ExpPreview" Grid.Row="2" Margin="0,15,0,0" 
+                  Header="👁️ Zobrazit plný prompt (s Master CV a JSON pravidly)" 
+                  Foreground="#AAAAAA" Expanded="ExpPreview_Expanded">
+            <TextBox x:Name="TxtFullPrompt" Height="200" Margin="0,10,0,0"
+                     IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                     Background="#111111" Foreground="#888888" BorderBrush="#333"
+                     Padding="10" FontFamily="Consolas" FontSize="12"/>
+        </Expander>
+
+        <Grid Grid.Row="3" Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Content="Zrušit" 
+                    Background="Transparent" Foreground="#CCCCCC" BorderBrush="#666666" BorderThickness="1" 
+                    Padding="15,8" Margin="0,0,10,0" Cursor="Hand"
+                    Grid.Column="1" Click="BtnCancel_Click"/>
+
+            <Button Content="⚡ Potvrdit inzerát a zkopírovat Prompt" 
+                    Background="#27AE60" Foreground="White" BorderThickness="0" 
+                    Padding="20,8" FontWeight="Bold" Cursor="Hand"
+                    Grid.Column="2" Click="BtnConfirm_Click"/>
+        </Grid>
+    </Grid>
+</Window>
