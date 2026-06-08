@@ -1076,10 +1076,16 @@ namespace JobSniper
 
                             if (existingJob != null)
                             {
+                                bool isUrlChanged = string.IsNullOrEmpty(existingJob.Url) || !existingJob.Url.Equals(safeUrl, StringComparison.OrdinalIgnoreCase);
                                 jobsToUpdate.Add(() =>
                                 {
                                     existingJob.LastSeen = DateTime.Now;
                                     if (existingJob.Status == 4) existingJob.Status = 0;
+                                    if (isUrlChanged)
+                                    {
+                                        existingJob.Url = safeUrl;
+                                        LogToConsole($"[Scraper Engine] INFO: Updated URL for existing job offer '{existingJob.Title}' at '{existingJob.Company}'. Old URL was dead/redirected.");
+                                    }
                                 });
 
                                 job.Url = safeUrl;
