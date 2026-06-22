@@ -848,7 +848,7 @@ namespace JobSniper
             if (TxtCrmSearch != null) TxtCrmSearch.Text = "";
             if (PanelKeywords != null)
             {
-                PanelKeywords.Visibility = (_currentFilterStatus == 0 && !_isShowingDuplicates) ? Visibility.Visible : Visibility.Collapsed;
+                PanelKeywords.Visibility = ((_currentFilterStatus == 0 || _currentFilterStatus == 2) && !_isShowingDuplicates) ? Visibility.Visible : Visibility.Collapsed;
             }
             ApplyFilters();
         }
@@ -905,7 +905,11 @@ namespace JobSniper
             UpdateKeywordChips();
         }
         private void BtnPrilezitosti_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnPrilezitosti, "⭐ Opportunities", 1);
-        private void BtnKos_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnKos, "🗑️ Filtered to Trash", 2);
+        private void BtnKos_Click(object sender, RoutedEventArgs e)
+        {
+            SetView(GridTridicka, BtnKos, "🗑️ Filtered to Trash", 2);
+            UpdateKeywordChips(); // TOTO JSME PŘIDALI
+        }
         private void BtnDuplicity_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnDuplicity, "🔁 Session Duplicates", null, true);
         private void BtnSettings_Click(object sender, RoutedEventArgs e) => SetView(GridSettings, BtnSettings);
 
@@ -1859,18 +1863,43 @@ namespace JobSniper
         private void UpdateKeywordChips()
         {
             TrackedKeywords.Clear();
-            var inboxJobs = DatabaseOfJobs.Where(j => j.Status == 0).ToList();
 
-            foreach (var kwItem in _myKeywords.Where(k => !k.IsBanned)) // Filtrujeme jen standardní slova
+            // Pokud nejsme v Inboxu (0) ani v Koši (2), panel není vidět, nemusíme nic počítat
+            if (_currentFilterStatus != 0 && _currentFilterStatus != 2)
+            {
+                ItemsTrackedKeywords.ItemsSource = null;
+                return;
+            }
+
+            // 1. Získáme inzeráty podle toho, kde zrovna jsme
+            var targetJobs = _currentFilterStatus == 0
+                ? DatabaseOfJobs.Where(j => j.Status == 0).ToList()
+                : DatabaseOfJobs.Where(j => j.Status == 2 || j.Status == 3).ToList();
+
+            // 2. V Inboxu (0) chceme jen normální slova, v Koši (2) chceme VŠE (včetně zabanovaných)
+            var keywordsToProcess = _currentFilterStatus == 0
+                ? _myKeywords.Where(k => !k.IsBanned).ToList()
+                : _myKeywords;
+
+            foreach (var kwItem in keywordsToProcess)
             {
                 string kw = kwItem.Word;
-                int count = inboxJobs.Count(j =>
+                int count = targetJobs.Count(j =>
                     (j.Title != null && j.Title.Contains(kw, StringComparison.OrdinalIgnoreCase)) ||
                     (j.Company != null && j.Company.Contains(kw, StringComparison.OrdinalIgnoreCase))
                 );
+
                 if (count > 0)
-                    TrackedKeywords.Add(new TrackedWord { Keyword = kw, Count = count });
+                {
+                    TrackedKeywords.Add(new TrackedWord
+                    {
+                        Keyword = kw,
+                        Count = count,
+                        IsBanned = kwItem.IsBanned // Předáme stav do UI
+                    });
+                }
             }
+
             ItemsTrackedKeywords.ItemsSource = null;
             ItemsTrackedKeywords.ItemsSource = TrackedKeywords;
         }
@@ -1906,7 +1935,19 @@ public class KeywordItem : INotifyPropertyChanged
     {
         public string Keyword { get; set; }
         public int Count { get; set; }
-        public string DisplayText => $"{Keyword} ({Count})";
+        public bool IsBanned { get; set; } // Přidáno
+
+        // Pokud je slovo zabanované, přidáme ikonku
+        public string DisplayText => IsBanned ? $"⛔ {Keyword} ({Count})" : $"{Keyword} ({Count})";
+
+        // Vracíme rovnou štětec (Brush), aby to XAML jednoduše schroustal
+        public SolidColorBrush ChipBackground => IsBanned
+            ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E74C3C")) // Červená
+            : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E2E8F0")); // Původní šedá
+
+        public SolidColorBrush ChipForeground => IsBanned
+            ? Brushes.White
+            : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2C3E50")); // Původní tmavá
     }
     public class AiConfig
     {
