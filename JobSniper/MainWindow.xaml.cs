@@ -848,7 +848,7 @@ namespace JobSniper
             if (TxtCrmSearch != null) TxtCrmSearch.Text = "";
             if (PanelKeywords != null)
             {
-                PanelKeywords.Visibility = ((_currentFilterStatus == 0 || _currentFilterStatus == 2) && !_isShowingDuplicates) ? Visibility.Visible : Visibility.Collapsed;
+                PanelKeywords.Visibility = ((_currentFilterStatus == 0 || _currentFilterStatus == 2 || _currentFilterStatus == 4) && !_isShowingDuplicates) ? Visibility.Visible : Visibility.Collapsed;
             }
             ApplyFilters();
         }
@@ -1591,7 +1591,11 @@ namespace JobSniper
             RefreshUrlList();
             txtNewUrl.Text = "";
         }
-        private void BtnArchiv_Click(object sender, RoutedEventArgs e) => SetView(GridTridicka, BtnArchiv, "🗄️ Archive (Inactive offers)", 4);
+        private void BtnArchiv_Click(object sender, RoutedEventArgs e)
+        {
+            SetView(GridTridicka, BtnArchiv, "🗄️ Archive (Inactive offers)", 4);
+            UpdateKeywordChips(); // TOTO JSME PŘIDALI
+        }
         private void LogToConsole(string message)
         {
             Application.Current.Dispatcher.Invoke(() =>
@@ -1864,23 +1868,34 @@ namespace JobSniper
         {
             TrackedKeywords.Clear();
 
-            // Pokud nejsme v Inboxu (0) ani v Koši (2), panel není vidět, nemusíme nic počítat
-            if (_currentFilterStatus != 0 && _currentFilterStatus != 2)
+            // Pokud nejsme v Inboxu (0), Koši (2) ani v Archivu (4), panel schováme
+            if (_currentFilterStatus != 0 && _currentFilterStatus != 2 && _currentFilterStatus != 4)
             {
                 ItemsTrackedKeywords.ItemsSource = null;
                 return;
             }
 
-            // 1. Získáme inzeráty podle toho, kde zrovna jsme
-            var targetJobs = _currentFilterStatus == 0
-                ? DatabaseOfJobs.Where(j => j.Status == 0).ToList()
-                : DatabaseOfJobs.Where(j => j.Status == 2 || j.Status == 3).ToList();
+            // 1. Získáme inzeráty podle toho, kde zrovna jsme (přidán Archiv se statusem 4)
+            List<JobOffer> targetJobs;
+            if (_currentFilterStatus == 0)
+            {
+                targetJobs = DatabaseOfJobs.Where(j => j.Status == 0).ToList();
+            }
+            else if (_currentFilterStatus == 4)
+            {
+                targetJobs = DatabaseOfJobs.Where(j => j.Status == 4).ToList();
+            }
+            else
+            {
+                targetJobs = DatabaseOfJobs.Where(j => j.Status == 2 || j.Status == 3).ToList();
+            }
 
-            // 2. V Inboxu (0) chceme jen normální slova, v Koši (2) chceme VŠE (včetně zabanovaných)
-            var keywordsToProcess = _currentFilterStatus == 0
+            // 2. V Inboxu (0) a Archivu (4) chceme jen normální slova, v Koši (2) chceme VŠE
+            var keywordsToProcess = (_currentFilterStatus == 0 || _currentFilterStatus == 4)
                 ? _myKeywords.Where(k => !k.IsBanned).ToList()
                 : _myKeywords;
 
+            // ... (zbytek metody s foreach cyklem a ItemsSource zůstává úplně beze změny) ...
             foreach (var kwItem in keywordsToProcess)
             {
                 string kw = kwItem.Word;
@@ -1895,7 +1910,7 @@ namespace JobSniper
                     {
                         Keyword = kw,
                         Count = count,
-                        IsBanned = kwItem.IsBanned // Předáme stav do UI
+                        IsBanned = kwItem.IsBanned
                     });
                 }
             }
