@@ -1,7 +1,6 @@
 using JobSniper.Models;
 using System.Text.RegularExpressions;
 
-using JobSniper.Models;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;

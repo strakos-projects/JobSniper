@@ -2,14 +2,17 @@
 using JobSniper.AiServices.Steps;
 using JobSniper.Models;
 using JobSniper.Plugins;
+using JobSniper.Private;
 using JobSniper.Scrapers;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.CompilerServices;
 using System.Security.Policy;
 using System.Text;
@@ -20,17 +23,15 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 namespace JobSniper
 {
     public partial class MainWindow : Window
     {
 
-        private string _cachedProfileSummary = null;
-        private System.Windows.Threading.DispatcherTimer _searchTimer;
+        private string? _cachedProfileSummary = null;
+        private System.Windows.Threading.DispatcherTimer? _searchTimer;
         private List<Plugins.IWebActionPlugin> _webPlugins = new List<Plugins.IWebActionPlugin>();
-        private Plugins.BrowserBridge _browserBridge;
+        private Plugins.BrowserBridge? _browserBridge;
         private int? _currentFilterStatus = null;
         private bool _isShowingDuplicates = false;
         public ObservableCollection<JobOffer> DatabaseOfJobs { get; set; } = new ObservableCollection<JobOffer>();
@@ -55,11 +56,11 @@ namespace JobSniper
         private List<string> blacklistedCompanies = new List<string>();
         private readonly string crmFilePath = Path.Combine("Data", "crm_companies.json");
         private List<CompanyProfile> crmProfiles = new List<CompanyProfile>();
-        private EvaluationRepository _evaluationRepo;
+        private EvaluationRepository? _evaluationRepo;
         private readonly string evaluationsFilePath = Path.Combine("Data", "evaluations.json");
         private enum EngineState { Idle, Running, Cancelling }
         private EngineState _engineState = EngineState.Idle;
-        private CancellationTokenSource _scraperCts;
+        private CancellationTokenSource? _scraperCts;
         private readonly string autoStartFilePath = Path.Combine("Data", "autostart.config");
         private void LoadAiConfig()
         {
@@ -204,7 +205,7 @@ namespace JobSniper
         private void SaveKeywords() => File.WriteAllText(keywordsFilePath, JsonSerializer.Serialize(_myKeywords, new JsonSerializerOptions { WriteIndented = true }));
 
         private void RefreshKeywordList() { LstKeywords.ItemsSource = null; LstKeywords.ItemsSource = _myKeywords; }
-        private void SearchTimer_Tick(object sender, EventArgs e)
+        private void SearchTimer_Tick(object? sender, EventArgs e)
         {
             _searchTimer.Stop();
 
@@ -411,34 +412,42 @@ namespace JobSniper
 
                 return new { success = true };
             };
+            var privateAiWorkflow = new PrivateAiWorkflow();
             _browserBridge.OnCheckUrl = (url) =>
-            {
-                Debug.WriteLine("OnCheckUrl: " + url);
-                if (string.IsNullOrWhiteSpace(url)) return new { isMatch = false };
+{
+    Debug.WriteLine("OnCheckUrl: " + url);
+    if (string.IsNullOrWhiteSpace(url)) return new { isMatch = false, currentPhase = 0 };
 
-                string safeUrl = url.Split('#')[0];
+    string safeUrl = url.Split('#')[0];
 
-                return Application.Current.Dispatcher.Invoke<object>(() =>
-                {
-                    var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
-                        (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
-                        (job.Url != null && job.Url.StartsWith(safeUrl)));
+    // Získáme aktuální fázi z disku nezávisle na tom, jestli už je to v CRM
+    int phase = privateAiWorkflow.GetWorkflowState(safeUrl);
+    return Application.Current.Dispatcher.Invoke<object>(() =>
+    {
+        var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
+            (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+            (job.Url != null && job.Url.StartsWith(safeUrl)));
 
-                    if (existingJob != null)
-                    {
-                        var eval = _evaluationRepo.GetEvaluation(existingJob.JobId);
-                        bool hasText = !string.IsNullOrWhiteSpace(eval?.FullCoachText);
+        bool hasText = false;
+        string evalText = "";
 
-                        return new
-                        {
-                            isMatch = true,
-                            hasEvaluation = hasText,
-                            evaluationText = hasText ? eval.FullCoachText : ""
-                        };
-                    }
-                    return new { isMatch = false };
-                });
-            };
+        if (existingJob != null)
+        {
+            var eval = _evaluationRepo.GetEvaluation(existingJob.JobId);
+            hasText = !string.IsNullOrWhiteSpace(eval?.FullCoachText);
+            evalText = hasText ? eval.FullCoachText : "";
+        }
+
+        // Vracíme VŽDY i currentPhase, aby Chrome doplněk věděl, jaká tlačítka zobrazit
+        return new
+        {
+            isMatch = existingJob != null,
+            hasEvaluation = hasText,
+            evaluationText = evalText,
+            currentPhase = phase // <-- TOTO TAM CHYBĚLO
+        };
+    });
+};
 
             _browserBridge.OnDeleteEvaluation = (url) =>
             {
@@ -1315,8 +1324,8 @@ namespace JobSniper
                 // int countWithoutId = companyJobs.Count - countWithId;
                 // LogToConsole($"[CRM Debug] Hledání trvalo: {sw.ElapsedMilliseconds} ms ({sw.ElapsedTicks} ticků CPU). Nalezeno: {companyJobs.Count} inzerátů. Přes ID: {countWithId}, Pomalou (Regex): {countWithoutId}.");
 
-                var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo) { Owner = this };
-
+               // var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo) { Owner = this };
+                var crmWindow = new CrmWindow(profile, profile.PrimaryName, isBlacklisted, companyJobs, _evaluationRepo!) { Owner = this };
                 crmWindow.OnJobUpdated += () =>
                 {
                     SaveJobs();                };
@@ -1616,7 +1625,8 @@ namespace JobSniper
         {
             var newProfile = new CompanyProfile();
             //var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false) { Owner = this };
-            var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false, new List<JobOffer>(), _evaluationRepo) { Owner = this };
+            //var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false, new List<JobOffer>(), _evaluationRepo) { Owner = this };
+            var crmWindow = new CrmWindow(newProfile, Properties.Resources.Crm_NewCompany, false, new List<JobOffer>(), _evaluationRepo!) { Owner = this };
 
             if (crmWindow.ShowDialog() == true && newProfile.Aliases.Count > 0)
             {
@@ -1721,7 +1731,7 @@ namespace JobSniper
             }
         }
 
-        private bool IsCompanyBlacklisted(string companyName)
+        private bool IsCompanyBlacklisted(string? companyName)
         {
             if (string.IsNullOrWhiteSpace(companyName)) return false;
 
@@ -1923,7 +1933,7 @@ namespace JobSniper
 
 public class KeywordItem : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

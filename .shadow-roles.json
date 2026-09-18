@@ -1,0 +1,16 @@
+[
+  {
+    "Id": "eda08cf7-bbf3-4d74-9371-4c649d409546",
+    "HierarchyLevel": 1,
+    "Department": "Management",
+    "Name": "CTO (\u0158editel)",
+    "Instructions": "Jsi hlavn\u00ED architekt..."
+  },
+  {
+    "Id": "63620250-4df4-4727-9153-b6c95d277f38",
+    "HierarchyLevel": 3,
+    "Department": "Z\u00E1kladn\u00ED",
+    "Name": "V\u00FDchoz\u00ED asistent",
+    "Instructions": "Jsi u\u017Eite\u010Dn\u00FD asistent..."
+  }
+]
