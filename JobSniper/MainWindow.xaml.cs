@@ -414,40 +414,62 @@ namespace JobSniper
             };
             var privateAiWorkflow = new PrivateAiWorkflow();
             _browserBridge.OnCheckUrl = (url) =>
-{
-    Debug.WriteLine("OnCheckUrl: " + url);
-    if (string.IsNullOrWhiteSpace(url)) return new { isMatch = false, currentPhase = 0 };
+            {
+                Debug.WriteLine("OnCheckUrl: " + url);
 
-    string safeUrl = url.Split('#')[0];
+                object parsedProfiles = new object[0]; 
+                string profilesPath = @"X:\00 Dokumenty\- Kariera_a_CV\00_Master\profiles.json";
 
-    // Získáme aktuální fázi z disku nezávisle na tom, jestli už je to v CRM
-    int phase = privateAiWorkflow.GetWorkflowState(safeUrl);
-    return Application.Current.Dispatcher.Invoke<object>(() =>
-    {
-        var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
-            (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
-            (job.Url != null && job.Url.StartsWith(safeUrl)));
+                if (System.IO.File.Exists(profilesPath))
+                {
+                    try
+                    {
+                        string profilesJson = System.IO.File.ReadAllText(profilesPath);
+                        parsedProfiles = System.Text.Json.JsonSerializer.Deserialize<object>(profilesJson);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Chyba čtení profiles.json: {ex.Message}");
+                    }
+                }
+                // --------------------------------------------------------------------------
 
-        bool hasText = false;
-        string evalText = "";
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    return new { isMatch = false, currentPhase = 0, profiles = parsedProfiles };
+                }
 
-        if (existingJob != null)
-        {
-            var eval = _evaluationRepo.GetEvaluation(existingJob.JobId);
-            hasText = !string.IsNullOrWhiteSpace(eval?.FullCoachText);
-            evalText = hasText ? eval.FullCoachText : "";
-        }
+                string safeUrl = url.Split('#')[0];
 
-        // Vracíme VŽDY i currentPhase, aby Chrome doplněk věděl, jaká tlačítka zobrazit
-        return new
-        {
-            isMatch = existingJob != null,
-            hasEvaluation = hasText,
-            evaluationText = evalText,
-            currentPhase = phase // <-- TOTO TAM CHYBĚLO
-        };
-    });
-};
+                int phase = privateAiWorkflow.GetWorkflowState(safeUrl);
+
+                return Application.Current.Dispatcher.Invoke<object>(() =>
+                {
+                    var existingJob = DatabaseOfJobs.FirstOrDefault(job =>
+                        (job.PairingUrl != null && job.PairingUrl.StartsWith(safeUrl)) ||
+                        (job.Url != null && job.Url.StartsWith(safeUrl)));
+
+                    bool hasText = false;
+                    string evalText = "";
+
+                    if (existingJob != null)
+                    {
+                        var eval = _evaluationRepo.GetEvaluation(existingJob.JobId);
+                        hasText = !string.IsNullOrWhiteSpace(eval?.FullCoachText);
+                        evalText = hasText ? eval.FullCoachText : "";
+                    }
+
+             
+                    return new
+                    {
+                        isMatch = existingJob != null,
+                        hasEvaluation = hasText,
+                        evaluationText = evalText,
+                        currentPhase = phase,
+                        profiles = parsedProfiles 
+                    };
+                });
+            };
 
             _browserBridge.OnDeleteEvaluation = (url) =>
             {
@@ -732,7 +754,7 @@ namespace JobSniper
                     BtnToggleScraping.IsEnabled = true;
                     break;
                 case EngineState.Running:
-                    BtnToggleScraping.Content = Properties.Resources.Dashboard_BtnStopScraping;
+                    BtnToggleScraping.Content = Properties.Resources.Dashboard_BtnStopScraping; ; ;
                     BtnToggleScraping.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E74C3C")); // Červená
                     BtnToggleScraping.IsEnabled = true;
                     break;
